@@ -19,21 +19,33 @@ Run: python 18_prefix_sum.py
 # -------------------------------------------------------------- Pattern 107
 # The primitive. Everything below is this plus a way to pair up two prefixes.
 def build_prefix(nums: list[int]) -> list[int]:
-    # Asks: nothing on its own — this is the helper the rest of the file
-    # builds on. Given an array, return the running totals.
-    pre = [0] * (len(nums) + 1)            # pre[0] = 0 is the empty prefix
+    """Running totals, the helper the rest of this file is built on.
+    The n+1 sizing is the whole design: pre[0] = 0 is a real slot holding the
+    empty prefix, which is what lets every range formula work at index 0
+    without a special case. pre[i] means "sum of the FIRST i items".
+
+    Naive: recompute each range sum on demand — O(n) per query, re-adding
+    the same leading elements every time.
+
+    Real life: a bank statement's running balance column — every transaction
+    total between two dates is one subtraction, never a re-tally."""
+    pre = [0] * (len(nums) + 1)            # invariant: pre[i] = sum of the first i items; pre[0] = empty prefix
     for i, num in enumerate(nums):
         pre[i + 1] = pre[i] + num          # pre[i] = sum of the FIRST i items
     return pre
 
 
 def range_sum(pre: list[int], left: int, right: int) -> int:  # LC 303
-    # Asks: given a fixed array and MANY queries, return the sum of the
-    # elements from index left to index right, inclusive. The array never
-    # changes, so pay O(n) once up front and answer each query in O(1).
-    #
-    # Inclusive [left, right]. The n+1 sizing is what makes left == 0 work
-    # without a special case — pre[0] is a real slot, not an off-by-one.
+    """Sum of nums[left..right] inclusive, for many queries on a fixed array.
+    Read it as "everything up to r, minus everything before l". The array
+    never changes, so pay O(n) once and answer each query with one
+    subtraction. The shift is why the right index is r+1 and the left is l.
+
+    Naive: sum the slice per query — O(n) each, O(nq) overall, re-adding the
+    same elements for every overlapping query.
+
+    Real life: quoting the rainfall between two dates off a cumulative chart
+    — you read two points and subtract, never re-adding the days between."""
     #
     # Example: nums = [-2,  0,  3, -5,  2, -1]
     #           pre = [0, -2, -2,  1, -4, -2, -3]     <- one slot longer
@@ -41,29 +53,24 @@ def range_sum(pre: list[int], left: int, right: int) -> int:  # LC 303
     #
     #   range_sum(0, 2) = pre[3] - pre[0] =  1 - ( 0) =  1   (-2 + 0 + 3)
     #   range_sum(2, 5) = pre[6] - pre[2] = -3 - (-2) = -1   (3 - 5 + 2 - 1)
-    #
-    # Read it as "everything up to r, minus everything before l". The shift
-    # is why the right index is r + 1 and the left index is l, not l - 1.
     return pre[right + 1] - pre[left]
 
 
 # -------------------------------------------------------------- Pattern 108
 def subarray_sum_equals_k(nums: list[int], k: int) -> int:  # LC 560
-    # Asks: count HOW MANY contiguous subarrays sum to exactly k. Not
-    # whether one exists, not where it is — the total count. Values may be
-    # negative, which is the detail that rules out a sliding window.
-    #
-    # THE prefix-sum problem. sum(i..j) == k  <=>  pre[j+1] - pre[i] == k
-    # <=> pre[i] == pre[j+1] - k. So at each j, ask how many earlier prefixes
-    # equal running - k. Counting, so the map holds counts, not indices.
-    #
+    """Count contiguous subarrays summing to exactly k; values may be negative.
+    THE prefix-sum problem. sum(i..j) == k <=> pre[i] == pre[j+1] - k, so at
+    each j the question is "how many earlier prefixes equal running - k?" —
+    a map lookup. Counting, so the map holds counts, not indices.
+
+    Naive: sum every (start, end) pair — O(n^2). A sliding window is worse
+    than slow, it is WRONG here: shrinking from the left assumes sums only
+    grow, which needs all values >= 0 (see 09_binary_search.py's warning).
+
+    Real life: a running expense tape — if it reads $12 today and read $7
+    before, the days between cost exactly $5, however many refunds intervened."""
     # seen = {0: 1} seeds the empty prefix — without it every subarray that
     # starts at index 0 is missed. This is the bug, every time.
-    #
-    # Note the sliding window in Exercise/Hashing.py solves a WEAKER problem:
-    # shrinking from the left assumes sums only grow, which needs all values
-    # >= 0. With negatives it silently returns wrong answers. Prefix + hash
-    # map has no sign restriction — that is the whole reason it exists.
     #
     # Example: nums = [1, 2, 3], k = 3   ->   2
     #
@@ -74,8 +81,8 @@ def subarray_sum_equals_k(nums: list[int], k: int) -> int:  # LC 560
     #
     # The step-2 hit is the seed doing its job: need == 0 means "the
     # subarray starts at index 0". Drop {0: 1} and this returns 1.
-    seen = {0: 1}
-    running = count = 0
+    seen = {0: 1}                          # invariant: prefix value -> how many times seen, incl. the empty prefix
+    running = count = 0                    # invariant: running = sum of everything consumed so far
     for num in nums:
         running += num
         count += seen.get(running - k, 0)   # every match is one valid start
@@ -85,14 +92,16 @@ def subarray_sum_equals_k(nums: list[int], k: int) -> int:  # LC 560
 
 # -------------------------------------------------------------- Pattern 109
 def subarrays_div_by_k(nums: list[int], k: int) -> int:  # LC 974
-    # Asks: count how many contiguous subarrays have a sum divisible by k.
-    # Same counting shape as 560, but the target is "any multiple of k"
-    # instead of one exact value — so you bucket rather than look up.
-    #
-    # Divisibility instead of equality: the subarray sum is a multiple of k
-    # <=> the two prefixes share a remainder. Bucket by remainder, then any
-    # two prefixes in the same bucket define a valid subarray.
-    #
+    """Count contiguous subarrays whose sum is divisible by k.
+    Divisibility replaces equality: a subarray sum is a multiple of k exactly
+    when its two prefixes share a REMAINDER. So bucket prefixes by remainder,
+    and any two in one bucket define a valid subarray — LC 560 with a key change.
+
+    Naive: sum every subarray and test the modulus — O(n^2), where bucketing
+    pairs every arrival with all its predecessors at once.
+
+    Real life: matching receipts that settle to a whole number of banknotes —
+    two tapes ending on the same loose change cancel out between them."""
     # Python's % is already non-negative; in Java/C++ -1 % 5 == -1, so you
     # need ((r % k) + k) % k or the buckets split in two.
     #
@@ -109,8 +118,8 @@ def subarrays_div_by_k(nums: list[int], k: int) -> int:  # LC 974
     # Each arrival pairs with EVERY earlier prefix in its bucket, so a
     # bucket of size m contributes m*(m-1)/2 overall — that is why you add
     # the count before inserting, not after.
-    seen = {0: 1}
-    running = count = 0
+    seen = {0: 1}                          # invariant: remainder -> how many prefixes landed on it
+    running = count = 0                    # invariant: running is a remainder in [0, k)
     for num in nums:
         running = (running + num) % k
         count += seen.get(running, 0)
@@ -119,14 +128,16 @@ def subarrays_div_by_k(nums: list[int], k: int) -> int:  # LC 974
 
 
 def check_subarray_sum(nums: list[int], k: int) -> bool:  # LC 523
-    # Asks: does there EXIST a contiguous subarray of length at least 2
-    # whose sum is a multiple of k? True/False only. Two shifts from 974:
-    # existence instead of a count, and a minimum length — so the map now
-    # stores indices (to measure length) instead of counts.
-    #
-    # Same remainder idea, but existence with a LENGTH constraint (>= 2), so
-    # store the EARLIEST index per remainder and never overwrite — the
-    # earliest gives the longest span and the best shot at clearing the gap.
+    """Does a contiguous subarray of length >= 2 sum to a multiple of k?
+    Two shifts from LC 974: existence rather than a count, and a minimum
+    LENGTH — so the map stores indices instead of counts. Keep only the
+    EARLIEST index per remainder, since that gives the widest span to clear.
+
+    Naive: test every subarray of length >= 2 — O(n^2). Remainders answer it
+    in one pass, provided you never overwrite an earlier sighting.
+
+    Real life: asking whether any stretch of at least two days netted a whole
+    number of banknotes — you remember the first day each remainder appeared."""
     #
     # Example: nums = [23, 2, 4, 6, 7], k = 6   ->   True
     #
@@ -137,8 +148,8 @@ def check_subarray_sum(nums: list[int], k: int) -> bool:  # LC 523
     #
     # If that repeat had been at i = 1 the gap would be 1 and the scan must
     # CONTINUE, not return False — a later repeat can still be far enough.
-    first = {0: -1}                        # empty prefix "ends" before index 0
-    running = 0
+    first = {0: -1}                        # invariant: remainder -> EARLIEST index; empty prefix "ends" before index 0
+    running = 0                            # invariant: remainder of the prefix through index i
     for i, num in enumerate(nums):
         running = (running + num) % k
         if running in first:
@@ -151,13 +162,18 @@ def check_subarray_sum(nums: list[int], k: int) -> bool:  # LC 523
 
 # -------------------------------------------------------------- Pattern 110
 def contiguous_array(nums: list[int]) -> int:  # LC 525
-    # Asks: given an array of only 0s and 1s, return the LENGTH of the
-    # longest contiguous subarray containing an equal number of each.
-    # Length, not the subarray itself; 0 if none exists.
-    #
-    # "Equal counts of 0 and 1" is not a sum condition until you remap 0 to
-    # -1. Then equal counts == sum 0 == two prefixes with the SAME value, and
-    # the longest such subarray is the widest gap between repeats.
+    """Length of the longest subarray of 0s and 1s holding equal counts of each.
+    "Equal counts" is not a sum condition until you remap 0 to -1. Then it
+    becomes sum 0, i.e. two prefixes with the SAME value, and the longest such
+    subarray is the widest gap between repeats — so keep the earliest index.
+
+    Naive: check every subarray, counting both values — O(n^2) with running
+    counts. The remap turns the whole question into prefix equality.
+
+    Real life: sharing biscuits with a sibling, +1 you and -1 them — whenever
+    the score revisits a number, the stretch between was perfectly fair."""
+    # Same problem as find_max_length in 16_composing_structures.py, which
+    # frames it as one-question-one-structure rather than as a prefix sum.
     #
     # Example: nums = [0, 0, 1, 0, 0, 0, 1, 1]   ->   6
     #
@@ -171,8 +187,8 @@ def contiguous_array(nums: list[int]) -> int:  # LC 525
     #
     # That span is indices 2..7 = [1,0,0,0,1,1] — three of each. Note -1
     # also repeats (i=0, i=2) but only spans 2, so the max wins.
-    first = {0: -1}
-    running = best = 0
+    first = {0: -1}                        # invariant: balance -> EARLIEST index; never overwritten
+    running = best = 0                     # invariant: running = (count of 1s) - (count of 0s) so far
     for i, num in enumerate(nums):
         running += 1 if num == 1 else -1
         if running in first:
@@ -184,13 +200,17 @@ def contiguous_array(nums: list[int]) -> int:  # LC 525
 
 # -------------------------------------------------------------- Pattern 111
 def pivot_index(nums: list[int]) -> int:  # LC 724
-    # Asks: find the LEFTMOST index where the sum of everything strictly to
-    # its left equals the sum of everything strictly to its right. The
-    # pivot element itself belongs to neither side. Return -1 if no such
-    # index exists. An empty side sums to 0, so index 0 can qualify.
-    #
-    # You rarely need the whole prefix array — one running left sum plus the
-    # total gives the right side for free: right == total - left - nums[i].
+    """Leftmost index where the sum strictly left equals the sum strictly right.
+    You rarely need the whole prefix array — one running left sum plus the
+    total gives the right side free: right == total - left - nums[i]. The
+    pivot belongs to neither side, which is why left is updated AFTER the test.
+
+    Naive: for each index, sum both sides — O(n^2), recomputing totals that
+    shift by one element per step.
+
+    Real life: finding the balance point of a loaded plank by walking along
+    it with the weight behind you tallied and the total already known."""
+    # An empty side sums to 0, so index 0 can qualify.
     #
     # Example: nums = [1, 7, 3, 6, 5, 6], total = 28   ->   3
     #
@@ -200,7 +220,7 @@ def pivot_index(nums: list[int]) -> int:  # LC 724
     #   2    3     8    17
     #   3    6    11    11    <- balanced, and nums[3] itself counts as
     #                            neither side
-    total, left = sum(nums), 0
+    total, left = sum(nums), 0             # invariant: left = sum of everything strictly before i
     for i, num in enumerate(nums):
         if left == total - left - num:
             return i
@@ -209,21 +229,23 @@ def pivot_index(nums: list[int]) -> int:  # LC 724
 
 
 def min_start_value(nums: list[int]) -> int:  # LC 1413
-    # Asks: you walk the array adding each element to a running total.
-    # Return the SMALLEST positive starting value that keeps that total at
-    # 1 or above at every single step. Note "positive" — the answer is
-    # never below 1, even when the array never dips.
-    #
-    # Prefix MIN rather than prefix sum: the worst dip the running total ever
-    # takes decides the starting value. Answer is 1 - lowest, floored at 1
-    # (lowest starts at 0, so a never-negative array yields exactly 1).
+    """Smallest positive start value keeping the running total >= 1 throughout.
+    Prefix MIN, not prefix sum: only the worst dip the total ever takes
+    decides the answer, so one number summarizes the whole walk. Seeding
+    lowest at 0 is what floors the result at 1 for an array that never dips.
+
+    Naive: try candidate start values from 1 upward, simulating each —
+    O(answer * n), where a single pass already reveals the binding constraint.
+
+    Real life: deciding how much cash to start the day with, given the day's
+    takings and payouts — only the moment the till runs lowest matters."""
     #
     # Example: nums = [-3, 2, -3, 4, 2]   ->   5
     #
     #   running   -3  -1  -4   0   2      lowest dip = -4
     #   start 5:   2   4   1   5   7      never below 1  (5 - 4 == 1)
     #   start 4:   1   3   0   4   6      hits 0 at step 3  -> too small
-    running = lowest = 0
+    running = lowest = 0                   # invariant: lowest = worst running total seen, never above 0
     for num in nums:
         running += num
         lowest = min(lowest, running)
@@ -232,13 +254,16 @@ def min_start_value(nums: list[int]) -> int:  # LC 1413
 
 # -------------------------------------------------------------- Pattern 112
 def build_prefix_2d(matrix: list[list[int]]) -> list[list[int]]:  # LC 304
-    # Asks: same deal as 303 but on a grid — a fixed matrix and many
-    # queries, each naming a rectangle by its top-left and bottom-right
-    # corners, wanting the sum inside. Build once, answer each in O(1).
-    #
-    # Inclusion-exclusion: the two overlapping arms double-count the corner
-    # block, so subtract it back. Mirror of the four-corner stamp in
-    # 17_difference_array.range_add_2d — same identity, opposite direction.
+    """Cumulative sums over a grid, so any rectangle query costs O(1).
+    Inclusion-exclusion in two dimensions: the arm above and the arm to the
+    left both contain the top-left block, so subtract it back once. Exact
+    mirror of range_add_2d in 17_difference_array.py — same identity, inverted.
+
+    Naive: sum the rectangle's cells per query — O(rc) each, re-adding
+    interior cells shared by every overlapping query.
+
+    Real life: a cumulative rainfall map read from the origin — any region's
+    total is four corner readings combined, never a cell-by-cell survey."""
     #
     # Example: matrix = [[1, 2],        pre = [[0, 0,  0],
     #                    [3, 4]]               [0, 1,  3],
@@ -251,7 +276,7 @@ def build_prefix_2d(matrix: list[list[int]]) -> list[list[int]]:  # LC 304
     #                            4        +      3      +      4      -      1     = 10
     #                       the cell      arm above      arm left     overlap
     rows, cols = len(matrix), len(matrix[0])
-    pre = [[0] * (cols + 1) for _ in range(rows + 1)]
+    pre = [[0] * (cols + 1) for _ in range(rows + 1)]   # invariant: pre[r][c] = sum of the block above-left, excluding row r and col c
     for r in range(rows):
         for c in range(cols):
             pre[r + 1][c + 1] = (matrix[r][c] + pre[r][c + 1]
@@ -260,8 +285,12 @@ def build_prefix_2d(matrix: list[list[int]]) -> list[list[int]]:  # LC 304
 
 
 def region_sum(pre: list[list[int]], r1: int, c1: int, r2: int, c2: int) -> int:
+    # Sum of the rectangle (r1, c1) to (r2, c2), inclusive, in O(1).
     # Big rectangle, minus the strip above, minus the strip left, plus the
-    # top-left block that both strips removed.
+    # top-left block that both strips removed — the same inclusion-exclusion
+    # that built the table, applied in reverse.
+    # Naive: iterate the rectangle — O(rc) per query.
+    # Real life: reading four corner totals off the rainfall map.
     #
     # Example: on the [[1, 2], [3, 4]] prefix above, region_sum(1, 0, 1, 1)
     # asks for the bottom row: pre[2][2] - pre[1][2] - pre[2][0] + pre[1][0]
@@ -270,13 +299,17 @@ def region_sum(pre: list[list[int]], r1: int, c1: int, r2: int, c2: int) -> int:
 
 
 def num_submatrix_sum_target(matrix: list[list[int]], target: int) -> int:
-    # Asks: count how many submatrices (any rectangle, any size) sum to
-    # target. Rectangles at different positions count separately even if
-    # identical. This is 560's question with two dimensions of freedom.
-    #
-    # LC 1074. The composition worth knowing: fix a pair of rows, and every
-    # column strip between them collapses to a single number -> the 2D
-    # problem IS pattern 108 run once per row pair. O(rows^2 * cols).
+    """Count submatrices summing to target; LC 1074, i.e. LC 560 in two dimensions.
+    The composition worth knowing: FIX a pair of rows, and every column strip
+    between them collapses to one number — so the 2-D problem becomes pattern
+    108 run once per row pair. O(rows^2 * cols), and identical rectangles at
+    different positions count separately.
+
+    Naive: enumerate all four corners and sum each rectangle — O(r^2 c^2 * rc),
+    or O(r^2 c^2) with the prefix table but still without the hash-map trick.
+
+    Real life: auditing a spreadsheet for blocks netting zero by fixing a band
+    of rows, then sweeping across columns with a running tally."""
     #
     # Example: matrix = [[0, 1, 0],  target = 0   ->   4
     #                    [1, 1, 1],
@@ -305,12 +338,16 @@ def num_submatrix_sum_target(matrix: list[list[int]], target: int) -> int:
 
 # -------------------------------------------------------------- Pattern 113
 def xor_queries(arr: list[int], queries: list[list[int]]) -> list[int]:  # LC 1310
-    # Asks: for each query [left, right], return the XOR of every element
-    # from left to right inclusive. Return one answer per query, in order.
-    # Structurally identical to 303 — only the operator changed.
-    #
-    # Nothing about the technique needs addition — it needs an associative op
-    # with an inverse. XOR is its own inverse, so "subtract" is another XOR.
+    """XOR of arr[left..right] for each query — LC 303 with the operator swapped.
+    Nothing in the technique needs addition; it needs an associative operation
+    with an INVERSE. XOR is its own inverse, so the "subtraction" step is
+    another XOR. That is the whole generalization, and why this file ends here.
+
+    Naive: XOR the slice per query — O(n) each, re-folding the same leading
+    elements for every overlapping query.
+
+    Real life: parity checks along a tape — combining two checkpoints cancels
+    everything they share, leaving only the stretch between them."""
     #
     # Example: arr = [1, 3, 4, 8]
     #          pre = [0, 1, 2, 6, 14]        pre[i+1] = pre[i] ^ arr[i]
@@ -319,7 +356,7 @@ def xor_queries(arr: list[int], queries: list[list[int]]) -> list[int]:  # LC 13
     #
     # The cancellation is the point: pre[3] already contains 1^3^4, and
     # XOR-ing pre[1] == 1 back in deletes the 1, leaving 3^4.
-    pre = [0] * (len(arr) + 1)
+    pre = [0] * (len(arr) + 1)             # invariant: pre[i] = XOR of the first i items; pre[0] = 0 is the identity
     for i, num in enumerate(arr):
         pre[i + 1] = pre[i] ^ num
     return [pre[right + 1] ^ pre[left] for left, right in queries]

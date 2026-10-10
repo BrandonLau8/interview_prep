@@ -15,7 +15,21 @@ doubt about tone, density, or wording, open it and match it.
 ## Per-problem docstring
 
 Each function or class gets a docstring with three parts, in this order,
-separated by blank lines:
+separated by blank lines — optionally preceded by a one-line problem
+statement.
+
+0. **Problem statement** (optional, exactly one line, no label, no blank
+   line after it before the insight paragraph — it opens that paragraph's
+   block). Add it ONLY when the function name doesn't already say what is
+   being asked. `two_sum` and `subarray_sum_k` are self-describing; skip
+   it there. `is_isomorphic` and `find_max_length` are not — without the
+   line the reader has to look the problem up:
+
+       def is_isomorphic(s: str, t: str) -> bool:  # LC 205
+           """True iff s and t are in one-to-one character correspondence.
+           One-to-one = TWO questions: ...
+
+   In the short-variant `#` form, the statement is the first `#` line.
 
 1. **Core insight** (no label). State the ONE question the main loop asks
    per step, and which structure answers it in O(1)/O(log n). If the
@@ -24,18 +38,39 @@ separated by blank lines:
    approach" paragraph — it should let the reader re-derive the solution,
    not just follow it.
 
-2. **`Naive:`** — the brute-force approach in one or two sentences, with
-   its complexity, then what the chosen structure replaces. Frame it as
-   "the inner scan re-answers question X every time; the structure
-   remembers the answer." Include intermediate baselines when they exist
-   (e.g. "O(n^3), or O(n^2) with a running sum").
+2. **`Naive:`** — the brute-force approach, with its complexity, then what
+   the chosen structure replaces. Frame it as "the inner scan re-answers
+   question X every time; the structure remembers the answer." Include
+   intermediate baselines when they exist (e.g. "O(n^3), or O(n^2) with a
+   running sum").
 
 3. **`Real life:`** — an ELI5 analogy, then a real-system parallel in
    parentheses. The analogy MUST map to the *mechanism*, not just the
    topic: the everyday object has to play the role of the data structure
    (the notepad IS the dict, the odometer IS the prefix array). If the
    analogy would still work with a different algorithm, it's too generic —
-   find a better one. Keep it to 2–4 lines.
+   find a better one.
+
+### Line budget
+
+Each part has a hard cap. Going over means the parts are re-explaining each
+other — the usual culprit is Naive and Real life both restating the
+mechanism the insight already gave:
+
+    problem statement  1 line    only when the name doesn't say it
+    core insight       3 lines   the question + the structure answering it
+    Naive:             2 lines   complexity, then what the structure replaces
+    Real life:         3 lines   analogy + parenthetical real-system parallel
+
+That caps a docstring at ~11 lines including blanks. Cut prose to fit
+rather than dropping a part.
+
+### No worked examples
+
+Do not put example inputs/outputs in the docstring. The `__main__` asserts
+are the examples and they are verified; a docstring copy drifts. If an
+input shape is confusing enough to need showing, add it as an assert with a
+trailing `#` comment naming what it demonstrates.
 
 For trivial variants of an already-annotated problem in the same file, a
 short `#` comment block referring back is fine instead of a full docstring
@@ -66,5 +101,9 @@ different alphabet" plus one-line Naive and Real life comments.
 
 - Run the file (`uv run python <file>`); all asserts must still pass.
 - Every problem has all three docstring parts (or the short-variant form).
+- Every part is within its line budget; no docstring exceeds ~11 lines.
+- A problem statement line exists wherever the function name is opaque, and
+  is absent where the name already says it.
+- No worked examples in docstrings.
 - Each analogy names an object that plays the data structure's role.
 - No solution logic was changed.

@@ -194,6 +194,59 @@ path is large.
   `MergeSort.py:6` allocates a new list at every level, making the algorithm
   O(n log n) in space. Passing `(lo, hi)` indices instead keeps it O(log n).
 
+## Where to practice
+
+Three files in `pattern_code/`, in the order this page teaches them.
+
+**`03_trees.py` — pure recursion.** Example 2 generalized: same skeleton, an
+escalating combine step. Start here.
+
+    max_depth:251            Example 2 verbatim (LC 104)
+    is_same_tree:106         two arguments, base case has to cover both
+    invert_tree:124          combine mutates instead of returning a value
+    height:280               diameter — returns one thing, records another via nonlocal
+    gain:306                 max_path_sum — same skeleton as diameter; do them back to back
+    dfs:331                  rob_tree — combine returns a tuple
+    lca:367                  base case returns a node, not a number
+    build:155                recursion over index ranges, not over subtrees
+    dfs:402 / dfs:423        serialize / deserialize — recursion in both directions
+
+`dfs:331` and `lca:367` are where "assume the child calls are correct" stops
+being obvious and you have to actually state the invariant.
+
+**`07_backtracking.py` — Example 3, ten times.** Every problem is the
+choose / explore / un-choose template.
+
+    dfs:25                   subsets — the minimal template
+    dfs:102                  permutations — state is a used[] array, not a start index
+    dfs:216                  generate_parenthesis — two recursive calls, both guarded
+    dfs:242                  word_search — un-choose restores the board, not a path
+    dfs:274                  solve_n_queens — three parallel structures to undo
+    dfs:312                  partition_palindromes — the choices are string slices
+
+`word_search` and `solve_n_queens` punish a missing un-choose in a way `subsets`
+does not: with one shared board, a forgotten restore corrupts branches you have
+not visited yet.
+
+**`04_graphs.py` — where "smaller problem" stops being smaller.** This is the
+DFS bullet in [Related](#related) made concrete.
+
+    sink:28                  num_islands — mutates the grid as the visited set
+    dfs:163                  course schedule — three-color, GRAY = on the current path
+    dfs:265                  clone_graph — memo insert BEFORE recursing, for cycles
+    dfs1:451                 SCC — postorder as finish time
+    dfs:501                  bridges — carries parent to skip the trivial back-edge
+
+`dfs:265` is the direct answer to why graphs need `visited` and trees do not.
+
+Two one-offs worth a look: `15_design.py:212` backtracks over a trie for `.`
+wildcards, and `12_linked_list.py:75` (`reverse_k_group`) recurses to get the
+finished remainder before stitching.
+
+**Gap:** `05_dp.py` is 27 functions of bottom-up iteration with no `memo`
+anywhere, so the memoization bullet below has no target in `pattern_code/`. Use
+`DP_fib.py` for that.
+
 ## Related
 
 - **Memoization / dynamic programming** — recursion plus a cache on the

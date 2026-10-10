@@ -72,7 +72,9 @@ overflow-prone accumulators in prose even when the Python code is correct.
 
 ## Directory map
 
-    pattern_code/    18 numbered pattern files (two pointers -> prefix sum)
+    pattern_code/    18 numbered pattern files (two pointers -> prefix sum),
+                     plus 19_fallbacks.py: the brute force to write when the
+                     optimal one won't come, keyed to docs/daily_warmup.md
     amazon_prep/     Amazon OA problems; oa/ holds the prose companions
     c1_prep/         Capital One OA
     docs/concepts/   standalone concept explainers

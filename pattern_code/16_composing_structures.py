@@ -19,14 +19,12 @@ def two_sum(nums: list[int], target: int) -> list[int]:  # LC 1
     and where?" A dict value->index answers it in O(1). One question, one
     structure — the simplest possible instance.
 
-    Naive: for every i, rescan the rest of the array looking for
-    target - nums[i] — two nested loops, O(n^2). The inner scan re-answers
-    the same question every time; the dict remembers the answer instead.
+    Naive: for every i, rescan the rest for target - nums[i] — O(n^2). That
+    scan re-answers one question every time; the dict remembers the answer.
 
-    Real life: shopping with $9 — for each toy price you see, check a
-    notepad of prices already seen for one that costs exactly the rest,
-    instead of walking back down the aisle (matching a debit to a credit
-    in ledger reconciliation)."""
+    Real life: shopping with $9 — for each toy price, check a notepad of
+    prices already seen for one costing exactly the rest, instead of walking
+    back down the aisle (matching a debit to a credit in reconciliation)."""
     seen = {}                              # invariant: value -> its index, all j < i
     for i in range(len(nums)):
         need = target - nums[i]
@@ -38,13 +36,13 @@ def two_sum(nums: list[int], target: int) -> list[int]:  # LC 1
 
 # ------------------------------------------- bidirectional: one dict per direction
 def is_isomorphic(s: str, t: str) -> bool:  # LC 205
-    """One-to-one mapping = TWO questions: "what does a map to?" AND
-    "what maps to b?" One dict only checks s->t; it can't catch two
-    different s-chars claiming the same t-char. Second dict = other direction.
+    """True iff s and t are in one-to-one character correspondence.
+    One-to-one = TWO questions: "what does a map to?" AND "what maps to b?"
+    One dict only checks s->t; it can't catch two different s-chars claiming
+    the same t-char. Second dict = the other direction.
 
-    Naive: for each position i, rescan positions 0..i-1 to check that every
-    earlier occurrence of s[i] lined up with the same t-char (and vice
-    versa) — O(n^2). The two dicts cache both directions of that scan.
+    Naive: for each i, rescan 0..i-1 checking both directions held for every
+    earlier occurrence — O(n^2). The two dicts cache both directions.
 
     Real life: a secret code — A must ALWAYS become the same symbol, and no
     other letter may claim that symbol or you can't decode back (anonymizing
@@ -70,9 +68,9 @@ def is_isomorphic(s: str, t: str) -> bool:  # LC 205
 
 
 def word_pattern(pattern: str, s: str) -> bool:  # LC 290
+    # True iff pattern chars and words in s are in bijection.
     # Same signature as 205, different alphabet: chars <-> whole words.
-    # Naive: same O(n^2) rescan as 205 — for each position, look back through
-    # all earlier (char, word) pairs to check consistency both ways.
+    # Naive: same O(n^2) two-way rescan as 205, one lookback per position.
     # Real life: same secret-code rules, bigger pieces — "a = dog, b = cat"
     # (log template matching: each pattern slot binds to exactly one service).
     words = s.split()
@@ -98,18 +96,17 @@ def word_pattern(pattern: str, s: str) -> bool:  # LC 290
 
 # ------------------------------------------ running total: prefix sum + seen dict
 def subarray_sum_k(nums: list[int], k: int) -> int:  # LC 560
-    """Sliding window fails (negatives break monotonicity — pattern 9 pitfall).
+    """Count subarrays summing to exactly k.
+    Sliding window fails (negatives break monotonicity — pattern 9 pitfall).
     Question per step: "how many earlier prefixes equal current_prefix - k?"
     A dict counting seen prefix sums answers it in O(1).
 
-    Naive: try every (start, end) pair and sum the slice — O(n^3), or O(n^2)
-    if you keep a running sum per start. The dict collapses "how many earlier
-    starts would work?" from a rescan into one lookup.
+    Naive: sum every (start, end) slice — O(n^3), or O(n^2) with a running
+    sum per start. The dict collapses that rescan into one lookup.
 
     Real life: a piggy-bank tape of running totals — if it reads $12 today
-    and ever read $7 before, the days in between added up to exactly $5
-    (bank audit: count transaction runs netting exactly $k; refunds go
-    negative, which is exactly why the window fails)."""
+    and ever read $7 before, the days between added up to exactly $5 (bank
+    audit; refunds go negative, which is exactly why the window fails)."""
     count = 0
     prefix = 0
     seen = {}                              # invariant: prefix sum -> times seen so far
@@ -126,12 +123,12 @@ def subarray_sum_k(nums: list[int], k: int) -> int:  # LC 560
 
 
 def find_max_length(nums: list[int]) -> int:  # LC 525
-    """Equal 0s and 1s: recast 0 as -1, then "balanced" = "same running sum
-    seen before". Store FIRST index per sum (earliest = longest span).
+    """Longest subarray with equal numbers of 0s and 1s.
+    Recast 0 as -1, then "balanced" = "same running sum seen before". Store
+    the FIRST index per sum (earliest start = longest span).
 
-    Naive: check every subarray, counting its 0s and 1s — O(n^2) with running
-    counts. The dict of first-seen balances finds the earliest matching start
-    for each end in O(1).
+    Naive: check every subarray, counting 0s and 1s — O(n^2) with running
+    counts. The dict finds the earliest matching start for each end in O(1).
 
     Real life: sharing cookies with a sibling, +1 for you and -1 for them —
     whenever the score revisits a number, the stretch in between was
@@ -156,27 +153,24 @@ def find_max_length(nums: list[int]) -> int:  # LC 525
 
 # ---------------------------- frequency AND recency: freq dict + stack per freq
 class FreqStack:  # LC 895
-    """Pop the most frequent element, ties broken by recency. Two questions
-    per pop: "what's the max frequency?" AND "of those, which was pushed
-    last?" freq dict answers neither alone -> add a stack PER frequency
-    level. Invariant: group[f] holds every element that has reached
-    frequency f, in push order; an element with freq 3 sits in groups
-    1, 2 AND 3, so popping it from group[3] leaves it correct at freq 2.
+    """Pop the most frequent element, ties broken by recency.
+    Two questions per pop: "what's the max frequency?" AND "of those, which
+    was pushed last?" The freq dict answers neither alone — add a stack PER
+    frequency level, so both answers become one top-of-stack read.
 
-    Naive: keep one flat list of pushes; each pop scans the whole list to
-    count frequencies, find the max, then find its latest occurrence —
-    O(n) per pop. The freq dict + per-level stacks make both answers O(1).
+    Naive: keep one flat list of pushes; each pop scans it to count
+    frequencies, find the max, then its latest occurrence — O(n) per pop.
 
-    Real life: a teacher calling on whoever raised their hand the most
-    times, ties going to the most recent raise — a count per kid plus a
-    line-up per count level, no scanning the class (support queue: surface
-    the most-reported issue, freshest report first; LFU cache with LRU
-    tiebreak)."""
+    Real life: a teacher calling on whoever raised their hand the most times,
+    ties to the most recent raise — a count per kid plus a line-up per count
+    level, no scanning the class (LFU cache with LRU tiebreak)."""
 
     def __init__(self):
-        self.freq = {}                     # value -> current frequency
-        self.group = {}                    # frequency level -> stack of values
-        self.maxfreq = 0
+        self.freq = {}                     # invariant: value -> its current frequency
+        self.group = {}                    # invariant: f -> values that reached freq f, in push order
+        self.maxfreq = 0                   # invariant: highest f with a non-empty group
+        # sync: an element at freq 3 sits in groups 1, 2 AND 3, so popping it
+        # off group[3] leaves it already correct at freq 2.
 
     def push(self, val: int) -> None:
         if val in self.freq:

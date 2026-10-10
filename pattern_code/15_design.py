@@ -12,9 +12,16 @@ from collections import deque
 
 # --------------------------------------------------------------- Pattern 93
 class LRUCache:  # LC 146
-    """Hashmap (O(1) lookup) + doubly linked list (O(1) reorder/evict).
-    The map points AT list nodes, so both structures update in O(1).
-    (Interview shortcut: OrderedDict / dict.move_to_end — but know this.)"""
+    """Fixed-capacity cache evicting the least recently used key, all O(1).
+    Two questions, two structures: the map answers "where is this key?" and
+    the doubly linked list answers "what was touched longest ago?". The map
+    points AT list nodes, which is the sync that keeps both updates O(1).
+
+    Naive: a dict plus a timestamp per entry — eviction then costs an O(n)
+    scan for the oldest. A list alone makes lookup O(n).
+
+    Real life: a desk where the file you just used goes back on top of the
+    pile, plus an index card saying which pile position each file is in."""
 
     class Node:
         __slots__ = ("key", "val", "prev", "next")
@@ -25,9 +32,9 @@ class LRUCache:  # LC 146
 
     def __init__(self, capacity: int):
         self.capacity = capacity
-        self.map: dict[int, LRUCache.Node] = {}
-        self.head = self.Node()            # sentinel: most-recent side
-        self.tail = self.Node()            # sentinel: least-recent side
+        self.map: dict[int, LRUCache.Node] = {}   # invariant: key -> its node; keys match the nodes in the list
+        self.head = self.Node()            # invariant: sentinel; head.next is the most recently used
+        self.tail = self.Node()            # invariant: sentinel; tail.prev is the eviction candidate
         self.head.next, self.tail.prev = self.tail, self.head
 
     def _unlink(self, node: "LRUCache.Node") -> None:
@@ -59,12 +66,20 @@ class LRUCache:  # LC 146
 
 
 class RandomizedSet:  # LC 380
-    """Array gives O(1) random; hashmap value->index gives O(1) lookup.
-    Delete = swap victim with LAST element, pop — no hole, no shift."""
+    """Insert, remove and get-a-uniform-random-member, all O(1).
+    Random sampling needs contiguous storage, membership needs hashing — so
+    keep both and sync them. Deletion is the trick: swap the victim with the
+    LAST element and pop, leaving no hole and shifting nothing.
+
+    Naive: a set alone has no indexable order, so random sampling degrades to
+    building a list each call — O(n). A list alone makes lookup O(n).
+
+    Real life: numbered raffle tickets in a box plus a ledger of who holds
+    which number — to withdraw someone, move the last ticket into their slot."""
 
     def __init__(self):
-        self.vals: list[int] = []
-        self.index: dict[int, int] = {}
+        self.vals: list[int] = []          # invariant: the members, in no meaningful order, no gaps
+        self.index: dict[int, int] = {}    # invariant: value -> its position in vals; always in sync
 
     def insert(self, val: int) -> bool:
         if val in self.index:
@@ -88,11 +103,19 @@ class RandomizedSet:  # LC 380
 
 
 class TimeMap:  # LC 981
-    """Per key: append-only (timestamp, value) list — timestamps arrive
-    sorted, so reads are a binary search (pattern 62)."""
+    """Store values under (key, timestamp); read back the latest value at or
+    before a given time. Writes arrive in increasing timestamp order, so each
+    key's list is sorted for free — which turns the read into a binary search
+    for the rightmost entry at or below the query (pattern 62).
+
+    Naive: scan a key's history backwards per read — O(n) per get, where the
+    sortedness the writes hand you already permits O(log n).
+
+    Real life: a ledger appended chronologically — to find the price on some
+    date you open near where that date falls, not at the first page."""
 
     def __init__(self):
-        self.store: dict[str, list[tuple[int, str]]] = {}
+        self.store: dict[str, list[tuple[int, str]]] = {}   # invariant: key -> (timestamp, value), ascending by timestamp
 
     def set(self, key: str, value: str, timestamp: int) -> None:
         self.store.setdefault(key, []).append((timestamp, value))
@@ -105,10 +128,19 @@ class TimeMap:  # LC 981
 
 
 class HitCounter:  # LC 362
-    """Queue of timestamps; evict what slid out of the 5-minute window."""
+    """Count hits received in the past 5 minutes.
+    A sliding window over time rather than over indices: hits enter at the
+    back and expire from the front, so a deque holds exactly the live ones.
+    Evicting lazily on read means idle periods cost nothing.
+
+    Naive: keep every hit forever and count those in range per query — O(n)
+    per read and unbounded memory on a long-running counter.
+
+    Real life: a doorman's tally slips dropped into a tube — before answering
+    "how many lately?", he shakes out the ones older than five minutes."""
 
     def __init__(self):
-        self.hits: deque[int] = deque()
+        self.hits: deque[int] = deque()    # invariant: timestamps in arrival order; stale ones evicted on read
 
     def hit(self, timestamp: int) -> None:
         self.hits.append(timestamp)
@@ -121,12 +153,20 @@ class HitCounter:  # LC 362
 
 # --------------------------------------------------------------- Pattern 94
 class Trie:  # LC 208
-    """Shared prefixes stored once; lookup cost = word length, regardless of
-    dictionary size. A hashmap can test membership but not PREFIXES."""
+    """Prefix tree: insert words, then test membership or any prefix.
+    The structure IS the shared prefixes — stored once, so lookup costs the
+    word's length no matter how large the dictionary grows. is_word is
+    separate from having children, because "app" inside "apple" is not a word.
+
+    Naive: a hashmap answers membership in O(1) but cannot answer PREFIXES at
+    all; testing every prefix against it is O(len) lookups of growing strings.
+
+    Real life: a filing cabinet where words sharing an opening letter share a
+    drawer — you walk letter by letter and never see unrelated words."""
 
     def __init__(self):
-        self.children: dict[str, Trie] = {}
-        self.is_word = False
+        self.children: dict[str, Trie] = {}   # invariant: next character -> the subtree spelling on from here
+        self.is_word = False               # invariant: True iff a complete word ends at this node
 
     def insert(self, word: str) -> None:
         node = self
@@ -151,6 +191,17 @@ class Trie:  # LC 208
 
 
 class WordDictionary:  # LC 211 — wildcard '.' = branch to ALL children
+    """Trie search where '.' matches any single character.
+    A wildcard turns lookup from a walk into a SEARCH: at '.' every child is
+    a candidate, so this is backtracking over the trie (pattern 46-52) rather
+    than a plain descent. Concrete characters still prune to one branch.
+
+    Naive: match the pattern against every stored word — O(words * len),
+    where the trie collapses shared prefixes into one traversal.
+
+    Real life: reading a crossword clue with blanks — at each blank you try
+    every letter that the grid still allows, and abandon dead branches."""
+
     def __init__(self):
         self.root = Trie()
 
@@ -169,8 +220,17 @@ class WordDictionary:  # LC 211 — wildcard '.' = branch to ALL children
 
 
 def replace_words(dictionary: list[str], sentence: str) -> str:  # LC 648
-    # Walk the trie until the SHORTEST root ends; that's the replacement.
-    trie = Trie()
+    """Replace each word by the shortest dictionary root that prefixes it.
+    Walking the trie visits a word's prefixes in increasing length, so the
+    FIRST is_word you meet is already the shortest root — returning there is
+    both the answer and the pruning. Falling off the trie means no root exists.
+
+    Naive: for each word test every dictionary entry as a prefix — O(words *
+    dict * len). The trie tests all roots simultaneously in one descent.
+
+    Real life: shortening surnames to the first recognized clan prefix — you
+    read letters until a known clan name completes, then stop."""
+    trie = Trie()                          # invariant: holds every root; is_word marks a root's last letter
     for root in dictionary:
         trie.insert(root)
 
@@ -215,7 +275,7 @@ if __name__ == "__main__":
 
     trie = Trie()
     trie.insert("apple")
-    assert trie.search("apple") and not trie.search("app")
+    assert trie.search("apple") and not trie.search("app")   # "app" is a prefix, not a stored word
     assert trie.starts_with("app")
 
     wd = WordDictionary()

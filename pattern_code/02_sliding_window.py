@@ -14,7 +14,17 @@ Run: python 02_sliding_window.py
 # ---------------------------------------------------------------- Pattern 8
 # Fixed size: slide = +entering element, -leaving element.
 def max_average_subarray(nums, k):  # LC 643
-    window = 0
+    """Largest average over any k consecutive elements.
+    Neighbouring windows overlap in k-1 elements, so their sums differ by
+    exactly two terms. Add the entering element, subtract the leaving one,
+    and each slide costs O(1) instead of a re-sum. Max sum = max average.
+
+    Naive: sum each of the n-k+1 windows from scratch — O(nk), re-adding the
+    same overlap every time; the running total remembers it instead.
+
+    Real life: a 4-day rolling weather average — you don't re-add four
+    temperatures daily, you add today's and drop the one from four days ago."""
+    window = 0                             # invariant: sum of the k elements ending at i
     for i in range(k):
         window = window + nums[i]
     best = window
@@ -28,9 +38,19 @@ def max_average_subarray(nums, k):  # LC 643
 # ---------------------------------------------------------------- Pattern 9
 # Variable size. The invariant IS the solution — state it before coding.
 def longest_substring_no_repeat(s):  # LC 3
-    # Invariant: window [left, right] never contains a repeat.
-    last_seen = {}  # char -> index of its most recent occurrence
-    left = 0
+    """Longest substring with no repeated character.
+    Question per step: "where was s[right] last seen?" A dict answers it in
+    O(1), and left jumps straight past that index rather than creeping. The
+    `>= left` guard matters — a sighting behind left already left the window.
+
+    Naive: for each start, extend while chars stay unique — O(n^2), and the
+    inner scan re-answers "have I seen this char?" the dict already knows.
+
+    Real life: reading a shelf of books and keeping the longest stretch with
+    no title twice — spotting a repeat, you restart just past the earlier copy
+    rather than walking back to the shelf's start (dedup window in a log)."""
+    last_seen = {}                         # invariant: char -> index of its most recent occurrence
+    left = 0                               # invariant: s[left:right+1] holds no repeat
     best = 0
     for right in range(len(s)):
         ch = s[right]
@@ -45,10 +65,20 @@ def longest_substring_no_repeat(s):  # LC 3
 
 
 def min_subarray_len(target, nums):  # LC 209
-    # "Shortest valid": expand until valid, then shrink WHILE still valid.
+    """Shortest subarray of positive numbers summing to at least target.
+    "Shortest valid" means expand until valid, then shrink WHILE still valid —
+    the opposite shape from "longest valid". Positivity is what makes the sum
+    monotone under both moves; with negatives this is wrong (see LC 560).
+
+    Naive: sum every (start, end) pair — O(n^2) with a running sum. Each
+    element enters and leaves the window once here, so the whole thing is O(n).
+
+    Real life: buying the fewest days of groceries to hit a $100 delivery
+    minimum — once you clear it, drop items off the front while you still
+    qualify (smallest burst of requests that trips a rate limit)."""
     left = 0
-    total = 0
-    best = len(nums) + 1  # sentinel: longer than any real window
+    total = 0                              # invariant: sum of nums[left:right+1]
+    best = len(nums) + 1                   # sentinel: longer than any real window
     for right in range(len(nums)):
         total = total + nums[right]
         while total >= target:  # shrink while valid
@@ -63,9 +93,18 @@ def min_subarray_len(target, nums):  # LC 209
 
 
 def min_window_substring(s, t):  # LC 76
-    # need[ch] > 0: window still owes that many of ch.
-    # need[ch] < 0: window holds that many surplus ch.
-    need = {}
+    """Shortest substring of s containing every char of t, multiplicity included.
+    One signed dict answers both questions: need[ch] > 0 means the window
+    still owes that many, need[ch] < 0 means it holds that many surplus. A
+    single counter `missing` collapses "am I valid yet?" into one comparison.
+
+    Naive: for every start, extend and re-count the window against t —
+    O(n^2 * |t|). The signed counts turn each move into one increment.
+
+    Real life: gathering a recipe's ingredients down one market aisle —
+    duplicates of what you already hold don't help, so once the basket is
+    complete you shed them off the back (smallest log slice with every error)."""
+    need = {}                              # invariant: >0 = still owed, <0 = surplus held
     for i in range(len(t)):
         ch = t[i]
         if ch in need:
@@ -99,12 +138,20 @@ def min_window_substring(s, t):  # LC 76
 
 
 def longest_repeating_char_replacement(s, k):  # LC 424
-    # Valid window: (size - count of majority char) <= k.
-    # Trick: max_freq never needs to decrease — window only needs to grow
-    # when a NEW higher max_freq appears, so a stale max just freezes growth.
-    count = {}
+    """Longest substring made uniform by replacing at most k characters.
+    Valid window: size - (count of its majority char) <= k, since anything not
+    the majority is a replacement you pay for. max_freq may go stale — a
+    too-large max only freezes growth, so shrinking never has to recompute it.
+
+    Naive: for each start, extend and recount the majority char — O(n^2 * 26).
+    The count dict plus the never-decreasing max keeps every move O(1).
+
+    Real life: a row of coloured tiles and k pots of paint — the cheapest
+    stretch to make one colour is the one already mostly that colour, and you
+    only care when some colour beats your current best run."""
+    count = {}                             # invariant: char -> its count inside the window
     left = 0
-    max_freq = 0
+    max_freq = 0                           # invariant: >= the true max count when the answer grows
     for right in range(len(s)):
         ch = s[right]
         if ch in count:
@@ -121,9 +168,18 @@ def longest_repeating_char_replacement(s, k):  # LC 424
 
 
 def max_consecutive_ones_iii(nums, k):  # LC 1004
-    # Reframe: longest window containing at most k zeros.
+    """Longest run of 1s after flipping at most k zeros.
+    "Flip k zeros" is a disguise — the window never needs to know WHICH zeros
+    it flipped, only how many it contains, so one counter replaces the whole
+    choice. Same never-shrink slide as LC 424 with a two-symbol alphabet.
+
+    Naive: try every subset of k zero positions to flip, then measure —
+    exponential. Counting zeros in the window collapses the choice entirely.
+
+    Real life: the longest stretch of a road trip you can call "on schedule"
+    if you're allowed k late days — you only count the late days, not which."""
     left = 0
-    zeros = 0
+    zeros = 0                              # invariant: zeros inside nums[left:right+1]
     for right in range(len(nums)):
         if nums[right] == 0:
             zeros = zeros + 1
@@ -138,8 +194,19 @@ def max_consecutive_ones_iii(nums, k):  # LC 1004
 # Monotonic deque: an element smaller AND older than a newcomer can never
 # be the max again — evict it. Front of deque = current max.
 def sliding_window_maximum(nums, k):  # LC 239
-    dq = []  # indices, values decreasing from front to back
-    head = 0  # dq[head] is the front; "pop front" just advances head
+    """Maximum of every window of size k.
+    An element that is both smaller AND older than the newcomer can never be
+    a future max — the newcomer outlives and outranks it — so evict it on
+    sight. What survives is a decreasing queue whose front is today's max.
+
+    Naive: rescan all k elements per window — O(nk). The deque remembers the
+    only candidates that scan could ever return; each index enters and leaves once.
+
+    Real life: a leaderboard where a younger, higher scorer permanently
+    retires everyone below them — the board self-trims to the only players
+    who could still lead (max latency over a rolling minute)."""
+    dq = []                                # invariant: indices, their values strictly decreasing
+    head = 0                               # invariant: dq[head] is the window's max; pop-front = head += 1
     out = []
     for i in range(len(nums)):
         while len(dq) > head and nums[dq[len(dq) - 1]] <= nums[i]:
@@ -156,6 +223,9 @@ def sliding_window_maximum(nums, k):  # LC 239
 # Frequency matching: an anagram is exactly a count-vector match in a
 # fixed window; zero-count keys are deleted so dicts stay comparable.
 def same_counts(a, b):
+    # Helper: do two count dicts describe the same multiset?
+    # Only sound because callers delete zero-count keys — a lingering {'x': 0}
+    # would make two equal windows compare unequal.
     if len(a) != len(b):
         return False
     for key in a:
@@ -167,16 +237,27 @@ def same_counts(a, b):
 
 
 def find_anagrams(s, p):  # LC 438
+    """Every start index where a substring of s is an anagram of p.
+    "Is this an anagram?" is exactly "do the count vectors match?", and order
+    never enters into it. Since |p| is fixed, the window is fixed too: one
+    char in, one char out, so each slide is two updates and a compare.
+
+    Naive: sort each of the n windows and compare — O(n * m log m). The count
+    dict carries the previous window's answer across the slide instead.
+
+    Real life: checking each handful of Scrabble tiles against a target word —
+    you don't re-sort the handful, you swap one tile and glance at the tally
+    (spotting a fixed multiset of event types in a rolling window)."""
     if len(p) > len(s):
         return []
-    need = {}
+    need = {}                              # invariant: char -> count in p, zero keys deleted
     for i in range(len(p)):
         ch = p[i]
         if ch in need:
             need[ch] = need[ch] + 1
         else:
             need[ch] = 1
-    window = {}
+    window = {}                            # invariant: char -> count in the current window, zero keys deleted
     for i in range(len(p)):
         ch = s[i]
         if ch in window:

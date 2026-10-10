@@ -31,15 +31,35 @@ def to_list(head: ListNode | None) -> list[int]:
 
 # --------------------------------------------------------------- Pattern 74
 def reverse_list(head: ListNode | None) -> ListNode | None:  # LC 206
-    prev = None
+    """Reverse a singly linked list in place.
+    The one hazard: overwriting head.next destroys the only route to the rest
+    of the list. The tuple assignment snapshots all three values before any
+    is written, which is why this fits on one line without a temp variable.
+
+    Naive: copy the values into an array, reverse it, and rewrite them —
+    O(n) extra space to avoid pointer bookkeeping.
+
+    Real life: reversing a conga line by having each person turn to face the
+    one behind — you must know who that is before you let go of the front."""
+    prev = None                            # invariant: head of the already-reversed prefix
     while head:
         head.next, prev, head = prev, head, head.next   # snapshot-and-rewire
     return prev
 
 
 def reverse_between(head: ListNode, left: int, right: int) -> ListNode:  # LC 92
-    dummy = ListNode(0, head)
-    wall = dummy
+    """Reverse only positions left..right, one pass.
+    Head-insertion rather than pointer-flipping: repeatedly unlink the node
+    AFTER cur and splice it just past wall. Each move pulls one node to the
+    front of the window, so the window reverses without any suffix rewiring.
+
+    Naive: cut the sublist out, call LC 206 on it, then stitch three pieces —
+    correct, but the boundary bookkeeping is where the bugs live.
+
+    Real life: dealing cards off a deck onto the top of a pile — the pile
+    ends up in the opposite order without ever handling the whole deck."""
+    dummy = ListNode(0, head)              # invariant: kills the "window starts at position 1" special case
+    wall = dummy                           # invariant: the node immediately before the window
     for _ in range(left - 1):              # wall = node before the window
         wall = wall.next
     cur = wall.next
@@ -53,8 +73,17 @@ def reverse_between(head: ListNode, left: int, right: int) -> ListNode:  # LC 92
 
 
 def reverse_k_group(head: ListNode | None, k: int) -> ListNode | None:  # LC 25
-    # Check a full group exists, reverse it, recurse on the rest, stitch.
-    node = head
+    """Reverse every full group of k nodes; leave a short tail alone.
+    Check FIRST, reverse second — walking k nodes before touching anything is
+    what protects the short tail. Recursing before the local reversal means
+    `prev` already points at the finished remainder, so the stitch is free.
+
+    Naive: reverse a group, then hunt for the new tail to attach the next
+    one — the same work with the joins done by hand and easy to misplace.
+
+    Real life: flipping a bookshelf shelf by shelf, but only where a full
+    shelf's worth of books is present — you count before you lift."""
+    node = head                            # invariant: probe walking k ahead to prove a full group exists
     for _ in range(k):
         if not node:
             return head                    # short tail stays as-is
@@ -67,8 +96,17 @@ def reverse_k_group(head: ListNode | None, k: int) -> ListNode | None:  # LC 25
 
 
 def is_palindrome_list(head: ListNode | None) -> bool:  # LC 234
-    # Middle (pattern 3) + reverse back half in place + compare.
-    slow = fast = head
+    """Is the list a palindrome, in O(1) extra space?
+    Composition of two primitives you already have: fast/slow finds the middle
+    (pattern 3), then LC 206 reverses the back half so both halves can be
+    walked forward together. Stopping when `back` runs out handles odd lengths.
+
+    Naive: copy the values to an array and two-point it — O(n) space, which
+    is the only thing the problem actually asks you to avoid.
+
+    Real life: checking a train's carriages read the same both ways by
+    uncoupling at the middle and turning the rear half around."""
+    slow = fast = head                     # invariant: slow reaches the midpoint as fast reaches the end
     while fast and fast.next:
         slow, fast = slow.next, fast.next.next
     back = reverse_list(slow)
@@ -82,7 +120,17 @@ def is_palindrome_list(head: ListNode | None) -> bool:  # LC 234
 
 # --------------------------------------------------------------- Pattern 75
 def merge_two_lists(l1: ListNode | None, l2: ListNode | None) -> ListNode | None:  # LC 21
-    dummy = tail = ListNode()
+    """Merge two sorted lists into one sorted list, reusing the nodes.
+    The dummy head is the point: without it every append needs an "is the
+    result empty?" branch. `<=` rather than `<` keeps equal values in their
+    original relative order, which is what makes the merge stable.
+
+    Naive: collect all values, sort, rebuild — O(n log n) plus new nodes, for
+    input that was already sorted.
+
+    Real life: interleaving two sorted card piles into one by always taking
+    the smaller top card, onto a placeholder that starts the new pile."""
+    dummy = tail = ListNode()              # invariant: dummy.next is the result; tail is its last node
     while l1 and l2:
         if l1.val <= l2.val:
             tail.next, l1 = l1, l1.next
@@ -95,8 +143,18 @@ def merge_two_lists(l1: ListNode | None, l2: ListNode | None) -> ListNode | None
 
 # --------------------------------------------------------------- Pattern 76
 def add_two_numbers(l1: ListNode | None, l2: ListNode | None) -> ListNode:  # LC 2
-    dummy = tail = ListNode()
-    carry = 0
+    """Add two numbers stored least-significant digit first.
+    The digit order is a gift — least significant first is exactly the order
+    long addition wants, so no reversal is needed. Putting `carry` in the loop
+    condition folds three end cases (l1 longer, l2 longer, final carry) into one.
+
+    Naive: convert both lists to ints, add, rebuild — fails the moment the
+    numbers exceed the word size, which is the whole reason they are lists.
+
+    Real life: adding two columns of figures on paper from the right, carrying
+    into a column that may not exist until you create it."""
+    dummy = tail = ListNode()              # invariant: dummy.next is the result; tail is its last digit
+    carry = 0                              # invariant: 0 or 1, owed to the next digit
     while l1 or l2 or carry:               # carry keeps the loop honest
         total = (l1.val if l1 else 0) + (l2.val if l2 else 0) + carry
         carry, digit = divmod(total, 10)
@@ -109,10 +167,18 @@ def add_two_numbers(l1: ListNode | None, l2: ListNode | None) -> ListNode:  # LC
 
 # --------------------------------------------------------------- Pattern 77
 def get_intersection_node(a: ListNode | None, b: ListNode | None) -> ListNode | None:  # LC 160
-    # Redirect each finished walker to the OTHER head: both travel a+b+shared,
-    # arriving at the junction in sync (or at None together).
-    pa, pb = a, b
-    while pa is not pb:
+    """The node where two lists merge, or None.
+    The lists have different lengths, so equalize by construction: send each
+    walker to the OTHER head on finishing. Both then cover exactly
+    len(a) + len(b) + shared, meeting at the junction — or at None together.
+
+    Naive: measure both lengths, advance the longer by the difference, then
+    walk in step — same O(n) but three passes and an explicit offset.
+
+    Real life: two people walking each other's routes in turn — having covered
+    identical ground, they arrive at the shared stretch at the same moment."""
+    pa, pb = a, b                          # invariant: each has walked the same total distance
+    while pa is not pb:                    # terminates: both hit None if there is no junction
         pa = pa.next if pa else b
         pb = pb.next if pb else a
     return pa
@@ -120,10 +186,19 @@ def get_intersection_node(a: ListNode | None, b: ListNode | None) -> ListNode | 
 
 # --------------------------------------------------------------- Pattern 78
 def reorder_list(head: ListNode | None) -> None:  # LC 143
-    # Compose primitives: find middle + reverse back half + interleave.
+    """Reorder to first, last, second, second-last, ... in place.
+    Three primitives composed, none new: find the middle, reverse the back
+    half, interleave. Cutting with `slow.next = None` is essential — leave it
+    joined and the interleave walks into the reversed half and loops forever.
+
+    Naive: index the nodes into an array and rewire by position — O(n) space,
+    and the array is only used to simulate walking backwards.
+
+    Real life: folding a queue in half so the last person stands beside the
+    first — you cut the line at the midpoint and turn the back half around."""
     if not head or not head.next:
         return
-    slow = fast = head
+    slow = fast = head                     # invariant: slow lands on the end of the FRONT half
     while fast.next and fast.next.next:
         slow, fast = slow.next, fast.next.next
     back = reverse_list(slow.next)
@@ -134,9 +209,18 @@ def reorder_list(head: ListNode | None) -> None:  # LC 143
 
 
 def partition_list(head: ListNode | None, x: int) -> ListNode | None:  # LC 86
-    # Two sublists with dummy heads, then concatenate — order preserved.
-    before = bt = ListNode()
-    after = at = ListNode()
+    """Move all nodes < x before all nodes >= x, keeping relative order.
+    Two output lists, each with its own dummy, then concatenate — appending
+    preserves order for free. `at.next = None` is mandatory: the last "after"
+    node still points into the original list, so leaving it makes a cycle.
+
+    Naive: swap node values to compact in place — breaks stability, and
+    swapping values sidesteps the pointer work the problem is about.
+
+    Real life: sorting mail into two trays as you walk the pile, then
+    stacking one tray on the other — nothing inside a tray gets reordered."""
+    before = bt = ListNode()               # invariant: chain of nodes with val < x, in original order
+    after = at = ListNode()                # invariant: chain of nodes with val >= x, in original order
     while head:
         if head.val < x:
             bt.next = head
@@ -151,10 +235,20 @@ def partition_list(head: ListNode | None, x: int) -> ListNode | None:  # LC 86
 
 
 def odd_even_list(head: ListNode | None) -> ListNode | None:  # LC 328
+    """Group nodes at odd positions before those at even positions.
+    Two chains woven through one list rather than built separately: each
+    pointer hops over its neighbour, so both are extended in lockstep.
+    even_head must be saved up front — the join needs it after the weave.
+
+    Naive: build two fresh lists and concatenate, as in LC 86 — correct, but
+    here the alternation lets you rewire without a second traversal.
+
+    Real life: splitting a deck by dealing alternately into two piles, then
+    setting one pile on top of the other."""
     if not head:
         return None
-    odd, even = head, head.next
-    even_head = even
+    odd, even = head, head.next            # invariant: tails of the odd and even chains
+    even_head = even                       # invariant: where the even chain starts, needed for the final join
     while even and even.next:
         odd.next = even.next               # odd hops over even
         odd = odd.next
@@ -165,8 +259,18 @@ def odd_even_list(head: ListNode | None) -> ListNode | None:  # LC 328
 
 
 def swap_pairs(head: ListNode | None) -> ListNode | None:  # LC 24
-    dummy = ListNode(0, head)
-    prev = dummy
+    """Swap every two adjacent nodes.
+    LC 25 with k fixed at 2, so the reversal collapses to one rewiring. Three
+    pointers change at once and each is read by another — the simultaneous
+    assignment is what removes the temp variables and the ordering trap.
+
+    Naive: swap the values instead of the nodes — passes these tests, but
+    dodges the pointer work the question exists to check.
+
+    Real life: two dancers in a line trading places while everyone else
+    stands still — the person in front must be told who now leads."""
+    dummy = ListNode(0, head)              # invariant: removes the "the head itself moves" special case
+    prev = dummy                           # invariant: last node of the already-swapped prefix
     while prev.next and prev.next.next:
         a, b = prev.next, prev.next.next
         a.next, b.next, prev.next = b.next, a, b   # prev -> b -> a -> rest
@@ -181,7 +285,7 @@ if __name__ == "__main__":
     assert to_list(reverse_k_group(from_list([1, 2, 3, 4, 5]), 2)) == \
         [2, 1, 4, 3, 5]
     assert is_palindrome_list(from_list([1, 2, 2, 1]))
-    assert not is_palindrome_list(from_list([1, 2]))
+    assert not is_palindrome_list(from_list([1, 2]))   # even length: halves must not overlap
     assert to_list(merge_two_lists(from_list([1, 2, 4]), from_list([1, 3, 4]))) == \
         [1, 1, 2, 3, 4, 4]
     assert to_list(add_two_numbers(from_list([2, 4, 3]), from_list([5, 6, 4]))) == \
