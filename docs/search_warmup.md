@@ -76,7 +76,7 @@ increasing order.
 
 ```python
 # shorthand: add a candidate to the path, recurse on the candidates after it, remove it, try the next one
-def combine(n, k):  # LC 77
+def combine(n: int, k: int) -> list[list[int]]:  # LC 77
     out = []
     path = []                          # invariant: path = the current choices, increasing
     def backtrack(start):
@@ -105,7 +105,7 @@ Task: return every subset of a list of distinct values.
 
 ```python
 # shorthand: record a copy of the path at every call, then extend it with each later element
-def subsets(nums):  # LC 78
+def subsets(nums: list[int]) -> list[list[int]]:  # LC 78
     n = len(nums)
     out = []
     path = []
@@ -138,7 +138,7 @@ Task: return every ordering of a list of distinct values.
 
 ```python
 # shorthand: try every unused element in the next slot, mark it used, recurse, then unmark it
-def permute(nums):  # LC 46
+def permute(nums: list[int]) -> list[list[int]]:  # LC 46
     n = len(nums)
     out = []
     path = []
@@ -173,7 +173,7 @@ Task: return every distinct subset of a list that can contain duplicates.
 
 ```python
 # shorthand: sort, then at each depth skip any element equal to the one just tried at the same depth
-def subsets_with_dup(nums):  # LC 90
+def subsets_with_dup(nums: list[int]) -> list[list[int]]:  # LC 90
     nums = sorted(nums)                # equal values must sit next to each other
     n = len(nums)
     out = []
@@ -205,7 +205,7 @@ Task: given distinct positive values, return every combination that sums to
 
 ```python
 # shorthand: sort, recurse with the same index to allow reuse, and stop the loop once a candidate overshoots
-def combination_sum(nums, target):  # LC 39
+def combination_sum(nums: list[int], target: int) -> list[list[int]]:  # LC 39
     nums = sorted(nums)
     n = len(nums)
     out = []
@@ -242,7 +242,7 @@ number of distinct ways to reach the top.
 
 ```python
 # shorthand: return the stored answer if there is one; otherwise compute it, store it, and return it
-def climb_stairs(n):  # LC 70
+def climb_stairs(n: int) -> int:  # LC 70
     memo = {}                          # invariant: memo[i] = ways to climb i steps, once computed
     def ways(i):
         if i <= 1:
@@ -259,6 +259,28 @@ assert climb_stairs(0) == 1                        # zero steps: one way, which 
 assert climb_stairs(80) == 37889062373143906       # without the memo, this never finishes
 ```
 
+Trace of `climb_stairs(5)`. Indentation is call depth, and `ways(i - 1)` runs
+before `ways(i - 2)`.
+
+    ways(5)                       miss
+      ways(4)                     miss
+        ways(3)                   miss
+          ways(2)                 miss
+            ways(1)               base: 1
+            ways(0)               base: 1
+          ways(2) = 1 + 1 = 2               store {2: 2}
+          ways(1)                 base: 1
+        ways(3) = 2 + 1 = 3                 store {2: 2, 3: 3}
+        ways(2)                   hit: 2
+      ways(4) = 3 + 2 = 5                   store {2: 2, 3: 3, 4: 5}
+      ways(3)                     hit: 3
+    ways(5) = 5 + 3 = 8                     store {2: 2, 3: 3, 4: 5, 5: 8}
+
+That's 9 calls. Plain recursion makes 15, because each hit replaces a whole
+subtree: `ways(2)` is 3 calls and `ways(3)` is 5. The first descent goes
+straight down to `ways(0)` and fills the memo, so every `ways(i - 2)` after
+that is a base case or a hit.
+
 Trap: create the memo inside the wrapper. `def ways(i, memo={})` creates one
 dict when the function is defined, and every later call shares it, including
 calls for a different input. If you forget the store line, the code is still
@@ -272,7 +294,7 @@ right or down. Return the number of paths to the bottom-right.
 
 ```python
 # shorthand: key the memo on every argument that changes; the answer at (r, c) is the paths going down plus the paths going right
-def unique_paths(rows, cols):  # LC 62
+def unique_paths(rows: int, cols: int) -> int:  # LC 62
     memo = {}                          # invariant: memo[(r, c)] = paths from (r, c) to the bottom-right
     def paths(r, c):
         if r == rows - 1 or c == cols - 1:
@@ -290,6 +312,29 @@ assert unique_paths(1, 1) == 1                     # one cell: already at the go
 assert unique_paths(18, 18) == 2333606220          # too slow without the memo; past int range in Java
 ```
 
+Trace of `unique_paths(3, 3)`. Down, `(r + 1, c)`, runs before right,
+`(r, c + 1)`.
+
+    paths(0,0)                    miss
+      paths(1,0)                  miss
+        paths(2,0)                last row: 1
+        paths(1,1)                miss
+          paths(2,1)              last row: 1
+          paths(1,2)              last col: 1
+        paths(1,1) = 1 + 1 = 2              store {(1,1): 2}
+      paths(1,0) = 1 + 2 = 3                store {(1,1): 2, (1,0): 3}
+      paths(0,1)                  miss
+        paths(1,1)                hit: 2
+        paths(0,2)                last col: 1
+      paths(0,1) = 2 + 1 = 3                store {.., (0,1): 3}
+    paths(0,0) = 3 + 3 = 6                  store {.., (0,0): 6}
+
+Cell `(1,1)` is reached twice, once from above and once from the left, and
+the second visit is a hit. On a 3 x 3 grid that saves only 2 calls (9 against
+11). By 18 x 18, plain recursion needs about 4.7 billion calls.
+If the memo is keyed on `r` alone, `paths(1,0)` overwrites `memo[1]` with 3, so
+the later `paths(1,1)` hit returns 3 instead of 2, and the total comes out 7.
+
 Trap: keying on `r` alone returns the first column's answer for every column.
 The key holds every argument that changes between calls, and nothing that
 doesn't. In Java, use an `int[rows][cols]` filled with -1, not 0, because 0
@@ -302,7 +347,7 @@ combination does. Each coin can be used any number of times.
 
 ```python
 # shorthand: try each coin as the last one and take the cheapest; impossible returns infinity, converted to -1 only at the top
-def coin_change(coins, amount):  # LC 322
+def coin_change(coins: list[int], amount: int) -> int:  # LC 322
     INF = float('inf')
     memo = {}                          # invariant: memo[a] = fewest coins summing to a, INF if impossible
     def fewest(a):
@@ -329,6 +374,33 @@ assert coin_change([2], 3) == -1                   # impossible
 assert coin_change([1], 0) == 0                    # amount 0: zero coins
 ```
 
+Trace of `coin_change([1, 2], 3)`. Coins are tried in order, so coin 1 comes
+before coin 2.
+
+    fewest(3)                     miss
+      fewest(2)                   via coin 1, miss
+        fewest(1)                 via coin 1, miss
+          fewest(0)               via coin 1: 0
+          fewest(-1)              via coin 2: INF
+        fewest(1) = min(0 + 1, INF + 1) = 1       store {1: 1}
+        fewest(0)                 via coin 2: 0
+      fewest(2) = min(1 + 1, 0 + 1) = 1           store {1: 1, 2: 1}
+      fewest(1)                   via coin 2: hit, 1
+    fewest(3) = min(1 + 1, 1 + 1) = 2             store {1: 1, 2: 1, 3: 2}
+
+Trace of `coin_change([2], 3)`, where no combination works:
+
+    fewest(3)                     miss
+      fewest(1)                   via coin 2, miss
+        fewest(-1)                via coin 2: INF
+      fewest(1) = INF + 1 = INF                   store {1: INF}
+    fewest(3) = INF + 1 = INF                     store {1: INF, 3: INF}
+    top level: INF -> return -1
+
+Now replace the INF with -1 inside the recursion. `fewest(1)` becomes
+`-1 + 1 = 0`, so `fewest(3)` becomes 1, a wrong answer that claims one coin
+pays 3.
+
 Trap: returning -1 inside the recursion makes `sub + 1` equal 0, which then
 wins every `min`. Keep "impossible" as a value that loses every comparison.
 In Java, `Integer.MAX_VALUE + 1` overflows, so use `amount + 1` as the
@@ -346,7 +418,7 @@ Task: merge k sorted arrays into one sorted array.
 import heapq
 
 # shorthand: push the first element of each array; pop the smallest, record it, and push the next element from the same array
-def merge_k_sorted(arrays):
+def merge_k_sorted(arrays: list[list[int]]) -> list[int]:
     heap = []                          # invariant: heap holds the next unmerged element of each array that has one
     for i in range(len(arrays)):
         if len(arrays[i]) > 0:
@@ -379,7 +451,7 @@ weight, or 0.
 
 ```python
 # shorthand: push negatives so the min-heap's smallest is the real largest; negate again when you pop
-def last_stone_weight(stones):  # LC 1046
+def last_stone_weight(stones: list[int]) -> int:  # LC 1046
     heap = []                          # invariant: heap holds -w for every stone w still in play
     for i in range(len(stones)):
         heapq.heappush(heap, -stones[i])
@@ -408,7 +480,7 @@ shortest distance from `src` to every node, or infinity where unreachable.
 
 ```python
 # shorthand: pop the closest node, skip it if a shorter distance was already found, then relax its edges
-def dijkstra(n, edges, src):
+def dijkstra(n: int, edges: list[list[int]], src: int) -> list[float]:   # inf where unreachable
     INF = float('inf')
     adj = []
     for i in range(n):
@@ -450,7 +522,7 @@ alphabetically.
 
 ```python
 # shorthand: sort by a tuple key; negate the number to flip its direction, and leave the tiebreak ascending
-def sort_by_count(pairs):
+def sort_by_count(pairs: list[list[str | int]]) -> list[list[str | int]]:   # each pair is [word, count]
     pairs.sort(key=lambda p: (-p[1], p[0]))   # count descending, then word ascending
     return pairs
 
@@ -471,7 +543,7 @@ Task: `nums` is sorted. Return the first index whose value is greater than
 
 ```python
 # shorthand: same as lower bound, but move right past mid while it's <= target
-def lower_bound(nums, target):
+def lower_bound(nums: list[int], target: int) -> int:
     lo = 0
     hi = len(nums)
     while lo < hi:
@@ -482,7 +554,7 @@ def lower_bound(nums, target):
             hi = mid
     return lo
 
-def upper_bound(nums, target):
+def upper_bound(nums: list[int], target: int) -> int:
     lo = 0
     hi = len(nums)                     # invariant: nums[0:lo] <= target, nums[hi:] > target
     while lo < hi:
@@ -511,7 +583,7 @@ Task: return whether two half-open intervals `[start, end)` overlap.
 
 ```python
 # shorthand: two intervals overlap when each one starts before the other ends
-def overlaps(a, b):
+def overlaps(a: list[int], b: list[int]) -> bool:
     return a[0] < b[1] and b[0] < a[1]
 
 assert overlaps([1, 5], [4, 8]) is True
@@ -531,7 +603,7 @@ Touching intervals don't count as overlapping.
 
 ```python
 # shorthand: sort by end, keep each interval that starts at or after the last kept end, count the rest as removed
-def erase_overlap_intervals(intervals):  # LC 435
+def erase_overlap_intervals(intervals: list[list[int]]) -> int:  # LC 435
     intervals = sorted(intervals, key=lambda iv: iv[1])
     removed = 0
     end = float('-inf')                # invariant: end = end of the last kept interval
@@ -562,16 +634,16 @@ Task: read, set, clear, and flip bit i of x.
 
 ```python
 # shorthand: shift a 1 to position i, then AND to test, OR to set, AND with its complement to clear, XOR to flip
-def get_bit(x, i):
+def get_bit(x: int, i: int) -> int:   # 0 or 1
     return (x >> i) & 1
 
-def set_bit(x, i):
+def set_bit(x: int, i: int) -> int:
     return x | (1 << i)
 
-def clear_bit(x, i):
+def clear_bit(x: int, i: int) -> int:
     return x & ~(1 << i)
 
-def toggle_bit(x, i):
+def toggle_bit(x: int, i: int) -> int:
     return x ^ (1 << i)
 
 x = 0b1010                             # 10
@@ -594,14 +666,14 @@ Task: count the 1 bits in x, and test whether x is a power of two.
 
 ```python
 # shorthand: x & (x - 1) removes the lowest 1 bit; count how many removals it takes to reach 0
-def count_bits(x):  # LC 191, x >= 0
+def count_bits(x: int) -> int:  # LC 191, x >= 0
     count = 0
     while x != 0:                      # invariant: count = 1 bits already removed from x
         x = x & (x - 1)
         count += 1
     return count
 
-def is_power_of_two(x):  # LC 231
+def is_power_of_two(x: int) -> bool:  # LC 231
     return x > 0 and (x & (x - 1)) == 0
 
 assert count_bits(0b1011) == 3
@@ -622,7 +694,7 @@ Task: return the value of x's lowest 1 bit.
 
 ```python
 # shorthand: -x flips every bit above the lowest 1 and keeps that 1, so x & -x leaves only it
-def lowest_bit(x):                     # x > 0
+def lowest_bit(x: int) -> int:         # x > 0
     return x & -x
 
 assert lowest_bit(0b1100) == 0b0100
@@ -655,7 +727,7 @@ class Trie:  # LC 208
     def __init__(self):
         self.root = TrieNode()
 
-    def insert(self, word):
+    def insert(self, word: str) -> None:
         node = self.root
         for i in range(len(word)):
             c = word[i]
@@ -664,7 +736,7 @@ class Trie:  # LC 208
             node = node.children[c]
         node.is_end = True
 
-    def walk(self, s):                 # the node that s leads to, or None
+    def walk(self, s: str) -> TrieNode | None:   # the node that s leads to, or None
         node = self.root
         for i in range(len(s)):
             c = s[i]
@@ -673,11 +745,11 @@ class Trie:  # LC 208
             node = node.children[c]
         return node
 
-    def search(self, word):
+    def search(self, word: str) -> bool:
         node = self.walk(word)
         return node is not None and node.is_end
 
-    def starts_with(self, prefix):
+    def starts_with(self, prefix: str) -> bool:
         return self.walk(prefix) is not None
 
 trie = Trie()
@@ -705,7 +777,7 @@ computing any factorial.
 
 ```python
 # shorthand: multiply by the next top factor, then divide by the next bottom factor; every step stays an exact integer
-def n_choose_k(n, k):
+def n_choose_k(n: int, k: int) -> int:
     if k < 0 or k > n:
         return 0
     if k > n - k:
