@@ -50,6 +50,18 @@ names the technique:
     re-sorting after each insert            heap
     recomputing the same subproblem         memo check first
     trying every value of the answer        binary search on the answer
+    checking every subarray / substring     variable-size window, or prefix sum + map
+    scanning a list to test membership      set or hash map
+    comparing every pair of intervals       sort by start
+    simulating every jump                   greedy scan
+    sorting two strings to compare them     letter counts
+    checking every substring is a palindrome  expand around center
+    recursion over two strings              DP table
+    walking the list twice                  gap pointers
+    recomputing height at every node        return up
+    a fresh search from every node          mark before you recurse
+
+Each pair, brute force and fix, is drilled in `docs/brute_force_warmup.md`.
 
 
 ## Constraints
@@ -156,6 +168,7 @@ n tells you the complexity you're allowed. Read it before the story.
     counts written as digits in the input      parse numbers          multi-digit parse
     digits of an integer                       % 10, // 10            digit extraction
     longest substring with a condition         window with counts     window with counts (array_warmup.md)
+    longest palindromic substring, count them  expand around center   expand around center (brute_force_warmup.md)
 
 
 ## When the tell lies

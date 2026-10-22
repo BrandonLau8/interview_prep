@@ -9,10 +9,13 @@ Not covered: linked lists, trees, graphs (`docs/structure_warmup.md`), and
 backtracking, memoization, heaps, bits (`docs/search_warmup.md`). For the
 mixed daily rotation, see `docs/daily_warmup.md`.
 
-How to use it: read the tell, cover the code, and write it yourself. Then
-compare, and read "Why it works." If you can't restate that explanation out
-loud, you memorized the code without understanding it. After that, the `Next:` line lists harder problems that use the same
-mechanism, with their answer keys in `pattern_code/`.
+How to use it: read the task and the "Spot it by" line, cover the code, and
+write it yourself. Then compare, step through the trace, and read "Why it
+works." If you can't restate that explanation out loud, you memorized the
+code without understanding it. The Time / Space block says where each bound
+comes from, which is the sentence an interviewer wants to hear. After that,
+the `Next:` line lists harder problems that use the same mechanism, with
+their answer keys in `pattern_code/`.
 
 Section 0 is smaller than a problem: the loop shapes that every later section
 is built from. Drill those first. Most off-by-one bugs live in the loop
@@ -622,7 +625,13 @@ Used in: Monotonic stack, LC 739 (section 4), Monotonic deque, LC 239 (section 4
 
 ### Opposite ends — LC 167 Two Sum II (sorted)
 
-Tell: the array is sorted and you need a pair that meets a target.
+Task: `nums` is sorted in non-decreasing order. Return the 1-indexed
+positions of the two numbers that add up to `target`. Exactly one answer
+exists, and you may not use the same element twice.
+
+Spot it by: the input is already sorted, and you want a pair (two elements)
+that hits a target. Sorted means moving a pointer changes the sum in a known
+direction: right gets bigger, left gets smaller.
 
 ```python
 def two_sum_sorted(nums, target):
@@ -639,7 +648,15 @@ def two_sum_sorted(nums, target):
     return []
 
 assert two_sum_sorted([2, 7, 11, 15], 9) == [1, 2]
+assert two_sum_sorted([1, 2, 4, 7, 11], 9) == [2, 4]   # both pointers have to move
 ```
+
+Trace of `two_sum_sorted([1, 2, 4, 7, 11], 9)`:
+
+    lo  hi  nums[lo] + nums[hi]  vs 9   move
+    0   4   1 + 11 = 12          big    hi -= 1   11 can't pair with anything
+    0   3   1 + 7 = 8            small  lo += 1   1 can't pair with anything
+    1   3   2 + 7 = 9            equal  return [2, 4]
 
 Why it works: because the array is sorted, `nums[lo]` is the smallest value
 still in play and `nums[hi]` is the largest. If the sum is too small, then
@@ -649,14 +666,19 @@ uses `lo` can work, and you discard it.
 The same argument works in reverse for `hi` when the sum is too big. Each step
 safely discards one element.
 
-Time O(n), space O(1).
+    Time   O(n)  every iteration moves lo or hi one step inward, so at most n - 1 iterations
+    Space  O(1)  two indices and a sum; nothing grows with n
 
 Next: LC 11 `01_two_pointers.py:70`, LC 15 `01_two_pointers.py:35`
 
 ### Reader / writer — LC 283 Move Zeroes
 
-Tell: the problem says "in place," and you need to keep some elements and
-drop others.
+Task: move every 0 in `nums` to the end, in place, while keeping the nonzero
+values in their original order. No copy of the array.
+
+Spot it by: "in place" plus "keep some elements, push the rest aside." One
+index reads every element; a second, slower index marks where the next kept
+element goes.
 
 ```python
 def move_zeroes(nums):
@@ -672,6 +694,18 @@ def move_zeroes(nums):
 assert move_zeroes([0, 1, 0, 3, 12]) == [1, 3, 12, 0, 0]
 ```
 
+Trace of `move_zeroes([0, 1, 0, 3, 12])`:
+
+    read  nums[read]  action             nums after          write after
+    0     0           skip               [0, 1, 0, 3, 12]    0
+    1     1           swap slots 0, 1    [1, 0, 0, 3, 12]    1
+    2     0           skip               [1, 0, 0, 3, 12]    1
+    3     3           swap slots 1, 3    [1, 3, 0, 0, 12]    2
+    4     12          swap slots 2, 4    [1, 3, 12, 0, 0]    3
+
+Between `write` and `read` there are only zeros, so each swap trades a zero
+for the next nonzero.
+
 Why it works: `read` visits every element, and `write` marks where the next
 nonzero belongs. Each nonzero gets swapped down to `write`, so the nonzeros
 keep their relative order. The zero they displace moves right.
@@ -679,14 +713,21 @@ keep their relative order. The zero they displace moves right.
 Swapping, rather than overwriting and zero-filling afterward, handles both
 halves of the array in a single pass.
 
-Time O(n), space O(1).
+    Time   O(n)  read visits each index once; each visit does at most one O(1) swap
+    Space  O(1)  two indices and tmp; the array is modified in place
 
 Next: LC 26 `01_two_pointers.py:183`, LC 844 `01_two_pointers.py:246`
 
 ### Fast / slow on indices — LC 287 Find the Duplicate
 
-Tell: values are in 1..n and you can't modify the array. Treat each value as
-a "next" pointer.
+Task: `nums` has n + 1 integers, each in the range 1..n, so at least one
+value repeats. Exactly one value is repeated (possibly many times). Return
+it without modifying the array and with O(1) extra space.
+
+Spot it by: values in 1..n that can all be used as indices, a ban on
+modifying the array, and a ban on extra space. Those rules rule out sorting,
+index marking, and a set, which leaves treating each value as a "next"
+pointer.
 
 ```python
 def find_duplicate(nums):
@@ -706,6 +747,17 @@ def find_duplicate(nums):
 assert find_duplicate([1, 3, 4, 2, 2]) == 2
 ```
 
+Trace of `find_duplicate([1, 3, 4, 2, 2])`. Following index -> value gives
+the path `0 -> 1 -> 3 -> 2 -> 4 -> 2 -> 4 ...`, a cycle {2, 4} entered at 2:
+
+    phase  step   slow  fast
+    1      start  1     1
+    1      1      3     2       slow 1 -> 3, fast 1 -> 3 -> 2
+    1      2      2     2       slow 3 -> 2, fast 2 -> 4 -> 2: met
+    2      start  1     2       slow restarts at nums[0]
+    2      1      3     4
+    2      2      2     2       met at the entrance: return 2
+
 Why it works: treat index i as a node with an edge to `nums[i]`. There are
 n+1 indices pointing into the range 1..n, so two of them point at the
 duplicate value. A node with two incoming edges is the entrance to a cycle.
@@ -717,14 +769,21 @@ meeting point to the entrance (counting around the cycle). So when both move
 one step at a time from those two spots, they meet at the entrance, which is
 the duplicate.
 
-Time O(n), space O(1), and the array is never modified.
+    Time   O(n)  phase 1: slow walks at most the tail plus one lap before fast catches it;
+                 phase 2: at most the tail length again. Both are bounded by n + 1 nodes
+    Space  O(1)  two indices; the array is never modified
 
 Next: LC 141 `01_two_pointers.py:100` (the linked-list original)
 
 ### Sliding window — LC 209 Minimum Size Subarray Sum
 
-Tell: you need the longest or shortest contiguous subarray, and all values
-are non-negative.
+Task: all values in `nums` are positive. Return the length of the shortest
+contiguous subarray whose sum is at least `target`, or 0 if none exists.
+
+Spot it by: "contiguous subarray" plus "shortest" or "longest," and the
+values are non-negative. Non-negative means adding an element never lowers
+the sum and removing one never raises it, so the window can grow and shrink
+greedily.
 
 ```python
 def min_subarray_len(target, nums):
@@ -745,15 +804,29 @@ assert min_subarray_len(7, [2, 3, 1, 2, 4, 3]) == 2
 assert min_subarray_len(100, [1, 2]) == 0          # no valid window
 ```
 
+Trace of `min_subarray_len(7, [2, 3, 1, 2, 4, 3])`:
+
+    right  add  total  shrinks (window recorded, then dropped)       left  best
+    0      2    2      -                                             0     7
+    1      3    5      -                                             0     7
+    2      1    6      -                                             0     7
+    3      2    8      [2,3,1,2] len 4, drop 2 -> 6                  1     4
+    4      4    10     [3,1,2,4] len 4, drop 3 -> 7;
+                       [1,2,4] len 3, drop 1 -> 6                    3     3
+    5      3    9      [2,4,3] len 3, drop 2 -> 7;
+                       [4,3] len 2, drop 4 -> 3                      5     2
+
+`best` starts at `len(nums) + 1 = 7`, a length no real window can have, which
+is how the end of the function tells "never found" apart from a real answer.
+
 Why it works: with non-negative values, growing the window never lowers the
 sum and shrinking it never raises the sum. That makes greedy shrinking safe.
 Once `[left, right]` is valid, any longer window that ends at `right` is only
 worse, so you record the length and drop `left`.
 
-The `while` loop is nested, but each index enters the window once and leaves
-it once.
-
-Time O(n), space O(1).
+    Time   O(n)  the while is nested, but left only moves forward and never passes n,
+                 so across the whole run it moves at most n times. Total work: n adds + n drops
+    Space  O(1)  left, total, best
 
 Next: LC 1004 `02_sliding_window.py:170`, LC 3 `02_sliding_window.py:40`.
 Negative values break the shrink step, so use a prefix sum instead (see
@@ -764,7 +837,12 @@ section 3).
 
 ### Reverse / rotate — LC 189 Rotate Array
 
-Tell: shift everything by k, with O(1) extra space.
+Task: rotate `nums` to the right by `k` steps, in place. The last k elements
+wrap around to the front. `k` may be larger than the array length.
+
+Spot it by: "shift" or "rotate" by k, with O(1) extra space required. The
+obvious answer, copying into a new array at `(i + k) % n`, uses O(n) space,
+so you need moves that happen in place: reversals.
 
 ```python
 def reverse(nums, lo, hi):
@@ -787,6 +865,14 @@ assert rotate([1, 2, 3, 4, 5, 6, 7], 3) == [5, 6, 7, 1, 2, 3, 4]
 assert rotate([1, 2], 3) == [2, 1]                 # k > n
 ```
 
+Trace of `rotate([1, 2, 3, 4, 5, 6, 7], 3)`:
+
+    step                   nums after
+    start                  [1, 2, 3, 4, 5, 6, 7]
+    reverse all (0..6)     [7, 6, 5, 4, 3, 2, 1]    5 6 7 are in front, backwards
+    reverse 0..k-1 (0..2)  [5, 6, 7, 4, 3, 2, 1]    front fixed
+    reverse k..n-1 (3..6)  [5, 6, 7, 1, 2, 3, 4]    back fixed
+
 Why it works: rotating right by k moves the last k elements to the front.
 Reversing the whole array does put them at the front, but backwards, and the
 rest of the array ends up behind them, also backwards. Reversing each part
@@ -795,13 +881,19 @@ separately restores the order inside it.
 `k % n` is needed because rotating by n does nothing, and without it
 `reverse(0, k-1)` would index past the end of the array.
 
-Time O(n), space O(1).
+    Time   O(n)  the three reversals swap n/2 + k/2 + (n-k)/2 = n pairs in total
+    Space  O(1)  each reversal uses two indices and tmp
 
 Next: LC 151 `01_two_pointers.py:332`
 
 ### Partition (Dutch flag) — LC 75 Sort Colors
 
-Tell: only 2 or 3 distinct values, and the problem wants one pass.
+Task: `nums` holds only 0s, 1s and 2s (red, white, blue). Sort it in place so
+all 0s come first, then 1s, then 2s, in one pass and without a library sort.
+
+Spot it by: only 2 or 3 distinct values, an in-place requirement, and "one
+pass." Counting each value and rewriting takes two passes; three pointers
+that carve out three regions take one.
 
 ```python
 def sort_colors(nums):
@@ -823,6 +915,20 @@ def sort_colors(nums):
 assert sort_colors([2, 0, 2, 1, 1, 0]) == [0, 0, 1, 1, 2, 2]
 ```
 
+Trace of `sort_colors([2, 0, 2, 1, 1, 0])`:
+
+    lo  mid  hi  nums[mid]  action                  nums after
+    0   0    5   2          swap mid, hi; hi -= 1    [0, 0, 2, 1, 1, 2]
+    0   0    4   0          swap lo, mid; both += 1  [0, 0, 2, 1, 1, 2]
+    1   1    4   0          swap lo, mid; both += 1  [0, 0, 2, 1, 1, 2]
+    2   2    4   2          swap mid, hi; hi -= 1    [0, 0, 1, 1, 2, 2]
+    2   2    3   1          mid += 1                 [0, 0, 1, 1, 2, 2]
+    2   3    3   1          mid += 1                 [0, 0, 1, 1, 2, 2]
+    2   4    3   -          mid > hi: stop
+
+Row 1 is the trap in action: the 0 swapped in from the back is checked on
+the next row because `mid` stayed put.
+
 Why it works: the three pointers split the array into four regions: 0s, 1s,
 unknown (`mid..hi`), and 2s. Each step classifies `nums[mid]` and shrinks the
 unknown region by one. The loop ends when that region is empty.
@@ -831,14 +937,21 @@ The asymmetry is the whole trick. A swap with `lo` brings back a value that
 has already been classified, so `mid` can advance. A swap with `hi` brings in
 a value nobody has looked at, so `mid` has to stay and check it.
 
-One pass. Time O(n), space O(1).
+    Time   O(n)  every iteration shrinks the unknown region mid..hi by exactly one,
+                 so there are exactly n iterations
+    Space  O(1)  three indices and tmp
 
 Next: `01_two_pointers.py:219`
 
 ### Index marking — LC 448 Find All Disappeared Numbers
 
-Tell: values are in 1..n and you're asked for O(1) extra space. Each index
-can store a "seen" flag for the value that belongs there.
+Task: `nums` has n integers, each in the range 1..n. Some values appear
+twice and others are missing. Return every value in 1..n that does not
+appear, using O(1) extra space besides the output.
+
+Spot it by: values in 1..n in an array of length n, and a ban on extra
+space. Every value has a matching slot (value v -> index v-1), so the array
+itself can hold a "seen" flag for each value.
 
 ```python
 def find_disappeared(nums):
@@ -855,6 +968,21 @@ def find_disappeared(nums):
 assert find_disappeared([4, 3, 2, 7, 8, 2, 3, 1]) == [5, 6]
 ```
 
+Trace of `find_disappeared([4, 3, 2, 7, 8, 2, 3, 1])`, marking pass:
+
+    i  abs(nums[i])  slot  nums after
+    0  4             3     [4, 3, 2, -7, 8, 2, 3, 1]
+    1  3             2     [4, 3, -2, -7, 8, 2, 3, 1]
+    2  2             1     [4, -3, -2, -7, 8, 2, 3, 1]     abs() undoes the mark on 2
+    3  7             6     [4, -3, -2, -7, 8, 2, -3, 1]
+    4  8             7     [4, -3, -2, -7, 8, 2, -3, -1]
+    5  2             1     already negative: skip          second 2
+    6  3             2     already negative: skip          second 3
+    7  1             0     [-4, -3, -2, -7, 8, 2, -3, -1]
+
+Collecting pass: slots 4 and 5 are still positive, so values 5 and 6 never
+appeared.
+
 Why it works: the values are 1..n and the indices are 0..n-1, so every value v
 owns slot v-1. Negating `nums[v-1]` records "v appeared" without destroying
 the number stored in that slot, and `abs()` gets it back.
@@ -862,13 +990,20 @@ the number stored in that slot, and `abs()` gets it back.
 After the pass, any slot that is still positive belongs to a value that never
 appeared.
 
-Time O(n), space O(1) not counting the output.
+    Time   O(n)  two passes over n slots, O(1) work per slot
+    Space  O(1)  the flags live in the sign bits of nums itself; out isn't counted
 
 Next: LC 442 `13_array_matrix.py:297`, LC 41 `13_array_matrix.py:274`
 
 ### Overwrite from the back — LC 88 Merge Sorted Array
 
-Tell: the destination array has free space at its end.
+Task: `nums1` holds m sorted values followed by n empty slots (zeros).
+`nums2` holds n sorted values. Merge `nums2` into `nums1` in place so that
+`nums1` ends up sorted.
+
+Spot it by: the destination array has free space at its end. Filling from
+the front would overwrite values you haven't merged yet; filling from the
+back writes only into slots that are free or already consumed.
 
 ```python
 def merge(nums1, m, nums2, n):
@@ -889,6 +1024,15 @@ assert merge([1, 2, 3, 0, 0, 0], 3, [2, 5, 6], 3) == [1, 2, 2, 3, 5, 6]
 assert merge([0], 0, [1], 1) == [1]                # nums1 starts empty
 ```
 
+Trace of `merge([1, 2, 3, 0, 0, 0], 3, [2, 5, 6], 3)`:
+
+    i  j  w  nums1[i] vs nums2[j]  write        nums1 after
+    2  2  5  3 vs 6                6 from nums2  [1, 2, 3, 0, 0, 6]
+    2  1  4  3 vs 5                5 from nums2  [1, 2, 3, 0, 5, 6]
+    2  0  3  3 vs 2                3 from nums1  [1, 2, 3, 3, 5, 6]
+    1  0  2  2 vs 2                2 from nums2  [1, 2, 2, 3, 5, 6]   tie: not >, so nums2
+    1  -1 1  j < 0: stop           nums1[0..1] = [1, 2] already in place
+
 Why it works: filling from the front would overwrite `nums1` values that
 haven't been merged yet. The back of `nums1` is free space. `w` can never
 overtake `i`, because `w - i = j + 1`, which stays positive while `nums2`
@@ -898,13 +1042,19 @@ Each step takes the larger of the two tails. When `j` goes negative, whatever
 is left in `nums1[0..i]` is already in place. If `i` runs out first, the
 `else` branch copies the rest of `nums2`.
 
-Time O(m + n), space O(1).
+    Time   O(m + n)  each iteration writes one slot and moves w left; at most m + n slots
+    Space  O(1)      three indices; the merge reuses nums1's spare slots
 
 Next: LC 977 `13_array_matrix.py:248`
 
 ### Matrix — LC 48 Rotate Image
 
-Tell: rotate or flip a 2-D grid in place.
+Task: rotate an n x n matrix 90° clockwise, in place. The top row becomes the
+right column.
+
+Spot it by: rotate or flip a 2-D grid, with "in place" ruling out building a
+second grid. Rotations decompose into flips (transpose, reverse rows, reverse
+columns), and each flip is a set of in-place swaps.
 
 ```python
 def rotate_image(m):
@@ -924,6 +1074,20 @@ def rotate_image(m):
 assert rotate_image([[1, 2, 3], [4, 5, 6], [7, 8, 9]]) == [[7, 4, 1], [8, 5, 2], [9, 6, 3]]
 ```
 
+Trace of `rotate_image([[1, 2, 3], [4, 5, 6], [7, 8, 9]])`:
+
+    step                          matrix after
+    start                         1 2 3 / 4 5 6 / 7 8 9
+    transpose: swap (0,1)-(1,0)   1 4 3 / 2 5 6 / 7 8 9
+    transpose: swap (0,2)-(2,0)   1 4 7 / 2 5 6 / 3 8 9
+    transpose: swap (1,2)-(2,1)   1 4 7 / 2 5 8 / 3 6 9
+    reverse row 0                 7 4 1 / 2 5 8 / 3 6 9
+    reverse row 1                 7 4 1 / 8 5 2 / 3 6 9
+    reverse row 2                 7 4 1 / 8 5 2 / 9 6 3
+
+The diagonal (1, 5, 9) never moves during the transpose, which is why `j`
+starts at `i + 1`.
+
 Why it works: a 90° clockwise rotation sends cell (i, j) to (j, n-1-i).
 Transposing sends (i, j) to (j, i), and reversing each row then sends (j, i)
 to (j, n-1-i). Doing both gives the rotation.
@@ -932,7 +1096,9 @@ The transpose loop starts at `j = i + 1`, so each pair is swapped exactly
 once. If it started at 0, every pair would be swapped twice, which undoes the
 transpose.
 
-Time O(n²), space O(1).
+    Time   O(n²)  the transpose swaps n(n-1)/2 pairs and the row reversals swap n * n/2;
+                  every one of the n² cells is touched a constant number of times
+    Space  O(1)   indices and tmp; no second matrix
 
 Next: LC 54 `13_array_matrix.py:51`, LC 73 `13_array_matrix.py:84`
 
@@ -941,7 +1107,12 @@ Next: LC 54 `13_array_matrix.py:51`, LC 73 `13_array_matrix.py:84`
 
 ### Prefix sum + map — LC 560 Subarray Sum Equals K
 
-Tell: count subarrays whose sum equals k, when values can be negative.
+Task: return how many contiguous subarrays of `nums` sum to exactly `k`.
+Values can be negative or zero.
+
+Spot it by: "count subarrays with sum k," with negatives allowed. Negatives
+break the sliding window (growing the window can lower the sum), so you need
+a way to get any subarray's sum in O(1): the difference of two prefix sums.
 
 ```python
 def subarray_sum(nums, k):
@@ -983,14 +1154,20 @@ at index 0 get counted. Check the map before inserting the current prefix. If
 you insert first, then with k = 0 the current prefix matches itself and you
 count an empty subarray.
 
-Time O(n), space O(n).
+    Time   O(n)  one pass; each element does one lookup and one insert, O(1) average each.
+                 The brute force checks all n(n+1)/2 subarrays: O(n²)
+    Space  O(n)  the map can hold up to n + 1 distinct prefix values
 
 Next: LC 724 `18_prefix_sum.py:202`, LC 525 `18_prefix_sum.py:164`, LC 974 `18_prefix_sum.py:94`
 
 ### Prefix + suffix passes — LC 238 Product Except Self
 
-Tell: the answer at i depends on everything to the left and everything to
-the right.
+Task: return an array where `out[i]` is the product of every element of
+`nums` except `nums[i]`. Do it in O(n) without using division.
+
+Spot it by: the answer at i depends on everything to the left and everything
+to the right of i. Two running passes, one from each end, give you both sides
+without recomputing them for every i.
 
 ```python
 def product_except_self(nums):
@@ -1032,13 +1209,20 @@ second pass does the same from the right and multiplies its product in.
 
 There's no division, so zeros need no special case.
 
-Time O(n), space O(1) besides the output.
+    Time   O(n)  two passes of n steps, O(1) each. Recomputing each product from scratch is O(n²)
+    Space  O(1)  besides out: the right pass reuses out instead of a separate suffix array
 
 Next: LC 845 `13_array_matrix.py:163`, LC 42 Trapping Rain Water (no reference in the repo)
 
 ### Difference array — LC 1109 Corporate Flight Bookings
 
-Tell: many range updates, then you read every position once at the end.
+Task: there are n flights, numbered 1..n. Each booking `[first, last, seats]`
+reserves `seats` seats on every flight from `first` through `last`. Return
+the total seats reserved on each flight.
+
+Spot it by: many updates that each add a value to a whole range, and you
+only read the final values once, after all updates. Applying each range
+directly is O(range); marking just its two ends is O(1).
 
 ```python
 def corp_flight_bookings(bookings, n):
@@ -1087,14 +1271,20 @@ A running sum over `diff` turns those markers back into totals. Every index
 between the two markers picks up `+seats`, and the `-seats` cancels it for
 every index after the range.
 
-Time O(n + bookings), space O(n).
+    Time   O(n + b)  b bookings at O(1) each, then one O(n) running sum.
+                     Applying each range directly is O(n * b) in the worst case
+    Space  O(n)      diff has n + 1 slots
 
 Next: LC 370 `17_difference_array.py:22`, LC 1094 `17_difference_array.py:64`
 
 ### Running best — LC 53 Maximum Subarray (Kadane)
 
-Tell: find the best contiguous sum, where each element either extends the
-current run or starts a new one.
+Task: return the largest sum of any non-empty contiguous subarray of `nums`.
+Values can be negative.
+
+Spot it by: "best contiguous sum," where at each element the only question
+is whether to extend the run you have or start a new one here. The answer for
+"ending at i" depends only on the answer for "ending at i-1."
 
 ```python
 def max_subarray(nums):
@@ -1132,7 +1322,8 @@ i-1. If `cur` has gone negative, dragging it along only hurts, so you restart.
 The answer is the largest `cur` seen at any i. Starting from `nums[0]` rather
 than 0 keeps all-negative arrays correct.
 
-Time O(n), space O(1).
+    Time   O(n)  one pass, two max() calls per element. Trying every subarray is O(n²)
+    Space  O(1)  cur and best replace a whole dp array, since only dp[i-1] is ever read
 
 Next: LC 121 `08_greedy.py:132`, LC 152 `05_dp.py:101`
 
@@ -1141,8 +1332,13 @@ Next: LC 121 `08_greedy.py:132`, LC 152 `05_dp.py:101`
 
 ### Hash map — LC 1 Two Sum
 
-Tell: for each element, you need to know whether its complement appeared
-earlier.
+Task: `nums` is unsorted. Return the indices of the two numbers that add up
+to `target`. Exactly one answer exists, and you may not use the same element
+twice.
+
+Spot it by: for each element, the question "has the value I need already
+appeared?" The array isn't sorted, so two pointers don't apply; a map from
+value to index answers that question in O(1).
 
 ```python
 def two_sum(nums, target):
@@ -1154,8 +1350,16 @@ def two_sum(nums, target):
         seen[nums[i]] = i              # insert AFTER the check: no self-pairing
     return []
 
+assert two_sum([3, 2, 4], 6) == [1, 2]             # 3 must not pair with itself
 assert two_sum([3, 3], 6) == [0, 1]                # duplicate values
 ```
+
+Trace of `two_sum([3, 2, 4], 6)`:
+
+    i  nums[i]  need  need in seen?  seen after
+    0  3        3     no             {3: 0}         seen was empty: 3 can't match itself
+    1  2        4     no             {3: 0, 2: 1}
+    2  4        2     yes, at 1      return [1, 2]
 
 Why it works: `nums[i]` needs the partner `target - nums[i]`. The map
 remembers every value already passed, so the partner lookup is O(1) instead of
@@ -1165,13 +1369,21 @@ Inserting after the check means an element can't pair with itself. Duplicates
 like `[3, 3]` still work, because the first 3 is already in the map when the
 second one arrives.
 
-Time O(n), space O(n).
+    Time   O(n)  one pass; each element does one lookup and one insert, O(1) average each.
+                 The all-pairs brute force is O(n²)
+    Space  O(n)  seen holds up to n - 1 entries when the answer is the last pair
 
 Next: LC 49 `14_strings.py:81`, LC 128 Longest Consecutive Sequence (no reference in the repo)
 
 ### Monotonic stack — LC 739 Daily Temperatures
 
-Tell: "next greater" or "next smaller" element.
+Task: `temps[i]` is the temperature on day i. Return an array where
+`ans[i]` is how many days you wait after day i for a warmer day, or 0 if no
+warmer day comes.
+
+Spot it by: "next greater" (or next smaller) element, or "how far until."
+Each element waits for the first later element that beats it, and the ones
+still waiting form a stack.
 
 ```python
 def daily_temperatures(temps):
@@ -1187,6 +1399,21 @@ def daily_temperatures(temps):
 assert daily_temperatures([73, 74, 75, 71, 69, 72, 76, 73]) == [1, 1, 4, 2, 1, 1, 0, 0]
 ```
 
+Trace of `daily_temperatures([73, 74, 75, 71, 69, 72, 76, 73])`. The stack
+shows `index:temp`, bottom to top:
+
+    i  temp  pops (ans[j] = i - j)        stack after
+    0  73    -                            [0:73]
+    1  74    0 -> 1                       [1:74]
+    2  75    1 -> 1                       [2:75]
+    3  71    -                            [2:75, 3:71]
+    4  69    -                            [2:75, 3:71, 4:69]
+    5  72    4 -> 1, 3 -> 2               [2:75, 5:72]           stops at 75
+    6  76    5 -> 1, 2 -> 4               [6:76]
+    7  73    -                            [6:76, 7:73]
+
+Days 6 and 7 are still on the stack at the end, so they keep the default 0.
+
 Why it works: the stack holds the days that are still waiting for a warmer
 day. Their temperatures never increase from bottom to top, because a warmer
 day would already have resolved every cooler day above it.
@@ -1195,13 +1422,20 @@ When day i arrives, it pops and answers every waiting day it beats, starting
 from the top. It stops at the first day that is at least as warm, since every
 day below that one is at least as warm too.
 
-Each index is pushed once and popped at most once. Time O(n), space O(n).
+    Time   O(n)  the while is nested, but each index is pushed once and popped at most once,
+                 so the total number of pops over the whole run is at most n
+    Space  O(n)  a strictly falling input never pops, so the stack can hold all n indices
 
 Next: LC 503 `10_stack.py:78`, LC 84 `10_stack.py:334`
 
 ### Monotonic deque — LC 239 Sliding Window Maximum
 
-Tell: you need the max (or min) of every window of size k.
+Task: a window of size `k` slides across `nums` one step at a time. Return
+the maximum value inside the window at each position.
+
+Spot it by: the max (or min) of every window of a fixed size k. Recomputing
+the max of each window costs O(k), and a running variable can't "un-max"
+an element when it leaves, so you keep the candidates in a deque.
 
 ```python
 from collections import deque
@@ -1222,6 +1456,22 @@ def max_sliding_window(nums, k):
 assert max_sliding_window([1, 3, -1, -3, 5, 3, 6, 7], 3) == [3, 3, 5, 5, 6, 7]
 ```
 
+Trace of `max_sliding_window([1, 3, -1, -3, 5, 3, 6, 7], 3)`. The deque shows
+`index:value`, front first:
+
+    i  nums[i]  evict front  pop from back   dq after              out
+    0  1        -            -               [0:1]                 -
+    1  3        -            0:1             [1:3]                 -
+    2  -1       -            -               [1:3, 2:-1]           3
+    3  -3       -            -               [1:3, 2:-1, 3:-3]     3
+    4  5        1:3 (1 <= 1) 3:-3, 2:-1      [4:5]                 5
+    5  3        -            -               [4:5, 5:3]            5
+    6  6        -            5:3, 4:5        [6:6]                 6
+    7  7        -            6:6             [7:7]                 7
+
+Row 4 uses both exits: the 3 leaves because its index slid out, and the -3
+and -1 leave because 5 beats them.
+
 Why it works: the deque holds only the indices that could still become a
 window max, with values decreasing from front to back. When `nums[i]`
 arrives, any smaller value at the back is both older and smaller than it, so
@@ -1230,13 +1480,20 @@ it can never be the max again, and it gets popped.
 That leaves the front as the max of the current window. It only needs to be
 evicted once its index slides out of the window.
 
-Each index enters and leaves once. Time O(n), space O(k).
+    Time   O(n)  each index is appended once and removed at most once (front or back),
+                 so the work across the whole run is at most 2n. Brute force is O(n * k)
+    Space  O(k)  the deque only holds indices inside the current window; out isn't counted
 
 Next: `02_sliding_window.py:196`
 
 ### Heap — LC 215 Kth Largest Element
 
-Tell: "k-th largest," "top k," or "k closest."
+Task: return the k-th largest element of the unsorted array `nums`. It's
+k-th largest in sorted order, so duplicates count separately.
+
+Spot it by: "k-th largest," "top k," or "k closest." You only ever need to
+remember k elements, and a heap of size k tells you which of them to throw
+away next.
 
 ```python
 import heapq
@@ -1252,6 +1509,20 @@ def find_kth_largest(nums, k):
 assert find_kth_largest([3, 2, 3, 1, 2, 4, 5, 5, 6], 4) == 4
 ```
 
+Trace of `find_kth_largest([3, 2, 3, 1, 2, 4, 5, 5, 6], 4)`. The heap is
+shown sorted; a real heap only guarantees the smallest is at `heap[0]`:
+
+    x  heap after push     popped  heap after
+    3  [3]                 -       [3]
+    2  [2, 3]              -       [2, 3]
+    3  [2, 3, 3]           -       [2, 3, 3]
+    1  [1, 2, 3, 3]        -       [1, 2, 3, 3]
+    2  [1, 2, 2, 3, 3]     1       [2, 2, 3, 3]
+    4  [2, 2, 3, 3, 4]     2       [2, 3, 3, 4]
+    5  [2, 3, 3, 4, 5]     2       [3, 3, 4, 5]
+    5  [3, 3, 4, 5, 5]     3       [3, 4, 5, 5]
+    6  [3, 4, 5, 5, 6]     3       [4, 5, 5, 6]     heap[0] = 4
+
 Why it works: keep a min-heap holding the k largest values seen so far. When
 it grows to k+1, pop the smallest, since it can't be in the top k. At the end
 the heap holds exactly the k largest values, and its minimum, `heap[0]`, is
@@ -1260,7 +1531,9 @@ the k-th largest.
 It's a min-heap, not a max-heap, because the thing you keep throwing away is
 the smallest.
 
-Time O(n log k), space O(k).
+    Time   O(n log k)  n pushes and up to n pops, each O(log k) because the heap never
+                       exceeds k + 1. Sorting everything is O(n log n)
+    Space  O(k)        the heap
 
 Next: LC 347 `06_heap.py:33`, LC 973 `06_heap.py:49`
 
@@ -1269,7 +1542,13 @@ Next: LC 347 `06_heap.py:33`, LC 973 `06_heap.py:49`
 
 ### Sort first — LC 56 Merge Intervals
 
-Tell: intervals, or pairs whose original order doesn't matter.
+Task: given a list of `[start, end]` intervals in any order, merge every
+group of overlapping intervals and return the merged list. Touching
+intervals like `[1, 4]` and `[4, 5]` count as overlapping.
+
+Spot it by: intervals, or pairs, where the input order carries no meaning.
+Once sorted by start, everything that can overlap sits next to each other,
+so one pass that only looks at the last merged block is enough.
 
 ```python
 def merge_intervals(intervals):
@@ -1286,6 +1565,18 @@ assert merge_intervals([[1, 3], [8, 10], [2, 6], [15, 18]]) == [[1, 6], [8, 10],
 assert merge_intervals([[1, 10], [2, 3]]) == [[1, 10]]  # nested interval
 ```
 
+Trace of `merge_intervals([[1, 3], [8, 10], [2, 6], [15, 18]])`. After the
+sort: `[[1, 3], [2, 6], [8, 10], [15, 18]]`.
+
+    iv        last merged end  overlap?   merged after
+    [1, 3]    -                -          [[1, 3]]
+    [2, 6]    3                2 <= 3     [[1, 6]]                     end = max(3, 6)
+    [8, 10]   6                8 > 6      [[1, 6], [8, 10]]
+    [15, 18]  10               15 > 10    [[1, 6], [8, 10], [15, 18]]
+
+Without the sort, `[2, 6]` would arrive after `[8, 10]` and never get merged
+with `[1, 3]`.
+
 Why it works: after sorting by start, any interval that overlaps the current
 merged block must come right after it, because nothing later can start
 earlier. That makes one pass enough.
@@ -1294,13 +1585,22 @@ If the next start is ≤ the current end, the two overlap, and you extend the
 end with `max`. The `max` matters because a nested interval must not shrink
 the end. Otherwise you start a new block.
 
-Time O(n log n) for the sort, then O(n).
+    Time   O(n log n)  the sort dominates; the merge pass after it is O(n)
+    Space  O(n)        merged can hold all n intervals when none overlap
+                       (plus the sort's own O(log n) to O(n), depending on the language)
 
 Next: LC 57 `08_greedy.py:48`, LC 455 `08_greedy.py:227`
 
 ### Binary search (lower bound) — LC 35 Search Insert Position
 
-Tell: sorted input and an O(log n) requirement.
+Task: `nums` is sorted with distinct values. Return the index of `target` if
+it's present; otherwise return the index where it would be inserted to keep
+the array sorted. Must run in O(log n).
+
+Spot it by: sorted input plus an O(log n) requirement. Anything faster than
+a scan on sorted data means halving the range each step. "Where would it be
+inserted" is exactly a lower bound: the first index whose value is >=
+target.
 
 ```python
 def search_insert(nums, target):
@@ -1318,6 +1618,16 @@ assert search_insert([1, 3, 5, 6], 5) == 2
 assert search_insert([1, 3, 5, 6], 7) == 4         # insert at end
 ```
 
+Trace of `search_insert([1, 3, 5, 6], 5)` and `search_insert([1, 3, 5, 6], 7)`:
+
+    target  lo  hi  mid  nums[mid]  compare      move
+    5       0   4   2    5          not < 5      hi = 2    mid might be the answer
+    5       0   2   1    3          3 < 5        lo = 2
+    5       2   2   -    -          lo == hi     return 2
+    7       0   4   2    5          5 < 7        lo = 3
+    7       3   4   3    6          6 < 7        lo = 4
+    7       4   4   -    -          lo == hi     return 4  past the end
+
 Why it works: this is a lower bound, meaning it finds the first index where
 `nums[i] >= target`. The loop keeps two facts true: everything before `lo` is
 `< target`, and everything from `hi` onward is `>= target`. When they meet,
@@ -1327,14 +1637,23 @@ If `nums[mid] < target`, the answer lies strictly right of `mid`. Otherwise
 `mid` itself might be the answer, so `hi = mid`, not `mid - 1`. Starting with
 `hi = n` covers a target larger than every element.
 
-Time O(log n), space O(1).
+    Time   O(log n)  each iteration halves hi - lo, so it takes about log2(n) iterations
+                     to reach 0. n = 1,000,000 needs about 20
+    Space  O(1)      lo, hi, mid
 
 Next: LC 34 `09_binary_search.py:367`, LC 153 `09_binary_search.py:137`, LC 33 `09_binary_search.py:107`
 
 ### Binary search on the answer — LC 875 Koko Eating Bananas
 
-Tell: "minimum X such that..." or "minimize the maximum," where a larger X
-never hurts.
+Task: `piles[i]` is a pile of bananas. Koko picks an eating speed of `speed`
+bananas per hour; each hour she eats from one pile, finishing it if it has
+`speed` or fewer left. Return the smallest integer speed that lets her
+finish every pile within `h` hours.
+
+Spot it by: "minimum X such that..." or "minimize the maximum," where a
+larger X never hurts. You can't compute X directly, but you can check any
+given X cheaply, and the checks go false, false, ..., true, true. Binary
+search that boundary.
 
 ```python
 def min_eating_speed(piles, h):
@@ -1357,6 +1676,18 @@ def min_eating_speed(piles, h):
 assert min_eating_speed([3, 6, 7, 11], 8) == 4
 ```
 
+Trace of `min_eating_speed([3, 6, 7, 11], 8)`:
+
+    lo  hi  mid  hours per pile    total  <= 8?  move
+    1   11  6    1 + 1 + 2 + 2     6      yes    hi = 6
+    1   6   3    1 + 2 + 3 + 4     10     no     lo = 4
+    4   6   5    1 + 2 + 2 + 3     8      yes    hi = 5
+    4   5   4    1 + 2 + 2 + 3     8      yes    hi = 4
+    4   4   -                                    return 4
+
+Speeds 4 and 5 both take 8 hours. The search keeps going after the first
+"yes" because it wants the smallest speed that works, not any speed.
+
 Why it works: nothing about the array is sorted, but the speeds are.
 `can(speed)` is false for small speeds and true for large ones, and it flips
 exactly once. Binary search finds the first speed where it's true, using the
@@ -1365,14 +1696,21 @@ same lower-bound template as LC 35.
 The range is 1..max(piles) because at `max(piles)` each pile takes exactly one
 hour, and the problem guarantees `h >= len(piles)`.
 
-Time O(n log max(piles)), space O(1).
+    Time   O(n log m)  m = max(piles): about log2(m) guesses, and each can() scans all n piles.
+                       Trying every speed from 1 upward is O(n * m)
+    Space  O(1)        lo, hi, mid, hours
 
 Next: LC 1011 `09_binary_search.py:212`, LC 410 `09_binary_search.py:243`
 
 ### Greedy scan — LC 55 Jump Game
 
-Tell: you only need a yes/no answer or a count, and the best local move is
-provably safe.
+Task: you start at index 0. `nums[i]` is the longest jump you can make from
+index i (any shorter jump is also allowed). Return whether you can reach the
+last index.
+
+Spot it by: the answer is yes/no (or a count), not the path itself, and one
+running value can summarize every choice so far. Here that value is "the
+farthest index I can reach," and taking the max is always safe.
 
 ```python
 def can_jump(nums):
@@ -1387,6 +1725,20 @@ assert can_jump([2, 3, 1, 1, 4]) is True
 assert can_jump([3, 2, 1, 0, 4]) is False
 ```
 
+Trace of `can_jump([2, 3, 1, 1, 4])` and `can_jump([3, 2, 1, 0, 4])`:
+
+    nums             i  i > farthest?  i + nums[i]  farthest after
+    [2, 3, 1, 1, 4]  0  no             2            2
+                     1  no             4            4     the last index is now reachable
+                     2  no             3            4
+                     3  no             4            4
+                     4  no             8            8     return True
+    [3, 2, 1, 0, 4]  0  no             3            3
+                     1  no             3            3
+                     2  no             3            3
+                     3  no             3            3     the 0 at index 3 is a wall
+                     4  yes: 4 > 3     -            -     return False
+
 Why it works: `farthest` is the farthest index reachable from any position
 seen so far. If i ever passes `farthest`, there's a gap no jump can cross.
 Otherwise i is reachable, so you extend `farthest` from it.
@@ -1394,7 +1746,8 @@ Otherwise i is reachable, so you extend `farthest` from it.
 You never need to know which path got you somewhere, because every index up
 to `farthest` is reachable.
 
-Time O(n), space O(1).
+    Time   O(n)  one pass, O(1) per index. Exploring every jump path is exponential
+    Space  O(1)  farthest
 
 Next: LC 45 `08_greedy.py:111`, LC 134 `08_greedy.py:165`
 
@@ -1403,8 +1756,12 @@ Next: LC 45 `08_greedy.py:111`, LC 134 `08_greedy.py:165`
 
 ### XOR — LC 268 Missing Number
 
-Tell: every value appears in pairs except one. Because x ^ x = 0, the pairs
-cancel out.
+Task: `nums` holds n distinct numbers taken from 0..n, so exactly one number
+in that range is missing. Return it, in O(n) time and O(1) space.
+
+Spot it by: every value appears in pairs except one. Here the pairs are each
+present number as an index and as a value. Because x ^ x = 0 and order
+doesn't matter for XOR, every pair cancels and the odd one out remains.
 
 ```python
 def missing_number(nums):
@@ -1417,6 +1774,17 @@ assert missing_number([3, 0, 1]) == 2
 assert missing_number([0]) == 1                    # missing value is n
 ```
 
+Trace of `missing_number([3, 0, 1])`. Binary in brackets:
+
+    i  i ^ nums[i]       x after
+    -  -                 3 [11]           start at n = 3
+    0  0 ^ 3 = 3 [11]    3 ^ 3 = 0 [00]
+    1  1 ^ 0 = 1 [01]    0 ^ 1 = 1 [01]
+    2  2 ^ 1 = 3 [11]    1 ^ 3 = 2 [10]   return 2
+
+All together: `3 ^ 0^3 ^ 1^0 ^ 2^1`. Regroup: `(3^3) ^ (0^0) ^ (1^1) ^ 2`, and
+every pair is 0, which leaves 2.
+
 Why it works: XOR together every index 0..n and every value. Each number that
 is present appears twice, once as an index and once as a value, so it cancels
 out. The missing number appears only as an index, so it's what remains.
@@ -1424,13 +1792,19 @@ out. The missing number appears only as an index, so it's what remains.
 `x` starts at n because the loop's indices only go up to n-1. The formula
 `n(n+1)/2 - sum` also works, but it can overflow in Java/C++, and XOR can't.
 
-Time O(n), space O(1).
+    Time   O(n)  one pass, two XORs per element
+    Space  O(1)  x. A set of seen values would also be O(n) time but O(n) space
 
 Next: LC 136 `11_bits.py:11`, LC 137 `11_bits.py:45`
 
 ### Bitmask — LC 78 Subsets
 
-Tell: n is at most about 20, and you want every subset.
+Task: `nums` holds distinct integers. Return every possible subset (the
+power set), including the empty set and `nums` itself, in any order.
+
+Spot it by: "all subsets" or "every combination of take / skip," with n
+small, at most about 20. Each element is one yes/no choice, and n yes/no
+choices are exactly the n bits of an integer.
 
 ```python
 def subsets(nums):
@@ -1448,19 +1822,39 @@ assert len(subsets([1, 2, 3])) == 8
 assert [] in subsets([1, 2, 3])
 ```
 
+Trace of `subsets([1, 2, 3])`. Bits are written high to low, so the
+rightmost bit is bit 0, which is `nums[0]`:
+
+    mask  bits  subset
+    0     000   []
+    1     001   [1]
+    2     010   [2]
+    3     011   [1, 2]
+    4     100   [3]
+    5     101   [1, 3]
+    6     110   [2, 3]
+    7     111   [1, 2, 3]
+
 Why it works: each of the n elements is either in a subset or out of it, so
 there are 2^n subsets. Those map one-to-one onto the integers 0..2^n-1
 written in n bits, where bit i set means "take `nums[i]`".
 
 Looping over every mask therefore produces every subset exactly once.
 
-Time O(n · 2^n), the same as the output size.
+    Time   O(n · 2^n)  2^n masks, and each one checks all n bits to build its subset.
+                       That matches the output size, so nothing can do better
+    Space  O(n · 2^n)  for out itself; O(n) extra besides the output
 
 Next: `07_backtracking.py:11` (the backtracking version)
 
 ### DP over indices — LC 198 House Robber
 
-Tell: the choice at i depends only on the choices at i-1 and i-2.
+Task: `nums[i]` is the cash in house i along a street. You can't rob two
+adjacent houses (that trips the alarm). Return the most cash you can take.
+
+Spot it by: a take/skip choice at each index, where taking i rules out its
+neighbor. The best answer through i depends only on the best answers through
+i-1 and i-2, so the dp needs just two variables.
 
 ```python
 def rob(nums):
@@ -1492,6 +1886,7 @@ because i-1 has to be skipped).
 Only the last two values are ever read, so two variables replace the whole dp
 array. Starting both at 0 handles an empty list and a single house.
 
-Time O(n), space O(1).
+    Time   O(n)  one pass, O(1) per house. Trying every non-adjacent subset is exponential
+    Space  O(1)  prev1, prev2, cur instead of an n-slot dp array
 
 Next: LC 300 `05_dp.py:429`, LC 416 `05_dp.py:199`
